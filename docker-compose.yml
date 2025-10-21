@@ -1,0 +1,319 @@
+services:
+  # PostgreSQL with pgvector
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    container_name: cortex-postgres
+    environment:
+      POSTGRES_USER: cortex_user
+      POSTGRES_PASSWORD: cortex_password
+      POSTGRES_DB: cortex_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/versions/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cortex_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and Celery
+  redis:
+    image: redis:7-alpine
+    container_name: cortex-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Gateway
+  gateway:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.gateway
+    container_name: cortex-gateway
+    environment:
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cortex_db
+      - DATABASE_USER=cortex_user
+      - DATABASE_PASSWORD=cortex_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECRET_KEY=your-secret-key-here
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+
+  # Auth Service
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service
+    container_name: cortex-auth
+    environment:
+      - SERVICE_NAME=auth
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cortex_db
+      - DATABASE_USER=cortex_user
+      - DATABASE_PASSWORD=cortex_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECRET_KEY=your-secret-key-here
+      - SERVICE_PORT=8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+
+  # Financial Service
+  financial-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service
+    container_name: cortex-financial
+    environment:
+      - SERVICE_NAME=financial
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cortex_db
+      - DATABASE_USER=cortex_user
+      - DATABASE_PASSWORD=cortex_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVICE_PORT=8002
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+
+  # HR Service
+  hr-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service
+    container_name: cortex-hr
+    environment:
+      - SERVICE_NAME=hr
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cortex_db
+      - DATABASE_USER=cortex_user
+      - DATABASE_PASSWORD=cortex_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVICE_PORT=8003
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+
+  # Legal Service
+  legal-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service
+    container_name: cortex-legal
+    environment:
+      - SERVICE_NAME=legal
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cortex_db
+      - DATABASE_USER=cortex_user
+      - DATABASE_PASSWORD=cortex_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVICE_PORT=8004
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+
+  # Procurement Service
+  procurement-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service
+    container_name: cortex-procurement
+    environment:
+      - SERVICE_NAME=procurement
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cortex_db
+      - DATABASE_USER=cortex_user
+      - DATABASE_PASSWORD=cortex_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVICE_PORT=8005
+    ports:
+      - "8005:8005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+
+  # Documents Service (with AI/vector operations)
+  documents-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service
+    container_name: cortex-documents
+    environment:
+      - SERVICE_NAME=documents
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cortex_db
+      - DATABASE_USER=cortex_user
+      - DATABASE_PASSWORD=cortex_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVICE_PORT=8006
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8006:8006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+
+  # AI Service
+  ai-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service
+    container_name: cortex-ai
+    environment:
+      - SERVICE_NAME=ai
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cortex_db
+      - DATABASE_USER=cortex_user
+      - DATABASE_PASSWORD=cortex_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVICE_PORT=8007
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8007:8007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.celery
+    container_name: cortex-celery-worker
+    environment:
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cortex_db
+      - DATABASE_USER=cortex_user
+      - DATABASE_PASSWORD=cortex_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+    command: celery -A shared.celery_app worker --loglevel=info
+
+  # Celery Beat (scheduler)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.celery
+    container_name: cortex-celery-beat
+    environment:
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cortex_db
+      - DATABASE_USER=cortex_user
+      - DATABASE_PASSWORD=cortex_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+    command: celery -A shared.celery_app beat --loglevel=info
+
+networks:
+  cortex-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

@@ -1,0 +1,1763 @@
+{
+	"info": {
+		"_postman_id": "cortex-api-collection",
+		"name": "Cortex Backend API",
+		"description": "Complete API collection for Cortex Corporate Agent System",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "cortex-team"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "empresa_id",
+			"value": "your-empresa-uuid-here",
+			"type": "string"
+		},
+		{
+			"key": "usuario_id",
+			"value": "your-usuario-uuid-here",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Gateway",
+			"item": [
+				{
+					"name": "Root",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Financial",
+			"item": [
+				{
+					"name": "Contas a Pagar",
+					"item": [
+						{
+							"name": "List Contas a Pagar",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/financial/contas-pagar?empresa_id={{empresa_id}}&status=pendente&skip=0&limit=100",
+									"host": ["{{base_url}}"],
+									"path": ["financial", "contas-pagar"],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "status",
+											"value": "pendente",
+											"description": "pendente, aprovado, pago, cancelado"
+										},
+										{
+											"key": "vencimento_inicio",
+											"value": "2025-01-01",
+											"disabled": true
+										},
+										{
+											"key": "vencimento_fim",
+											"value": "2025-12-31",
+											"disabled": true
+										},
+										{
+											"key": "skip",
+											"value": "0"
+										},
+										{
+											"key": "limit",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Conta a Pagar",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/financial/contas-pagar/:conta_id",
+									"host": ["{{base_url}}"],
+									"path": ["financial", "contas-pagar", ":conta_id"],
+									"variable": [
+										{
+											"key": "conta_id",
+											"value": "conta-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Conta a Pagar",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"fornecedor_id\": \"fornecedor-uuid-here\",\n  \"descricao\": \"Pagamento de fornecedor XYZ\",\n  \"valor\": 1500.00,\n  \"data_vencimento\": \"2025-02-28\",\n  \"status\": \"pendente\",\n  \"categoria\": \"Materiais\",\n  \"centro_custo\": \"TI-001\",\n  \"prioridade\": 5\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/financial/contas-pagar",
+									"host": ["{{base_url}}"],
+									"path": ["financial", "contas-pagar"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Conta a Pagar",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"aprovado\",\n  \"data_pagamento\": \"2025-02-15\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/financial/contas-pagar/:conta_id",
+									"host": ["{{base_url}}"],
+									"path": ["financial", "contas-pagar", ":conta_id"],
+									"variable": [
+										{
+											"key": "conta_id",
+											"value": "conta-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Conta a Pagar",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/financial/contas-pagar/:conta_id",
+									"host": ["{{base_url}}"],
+									"path": ["financial", "contas-pagar", ":conta_id"],
+									"variable": [
+										{
+											"key": "conta_id",
+											"value": "conta-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Cartões Corporativos",
+					"item": [
+						{
+							"name": "List Cartões",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/financial/cartoes",
+									"host": ["{{base_url}}"],
+									"path": ["financial", "cartoes"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Faturas do Cartão",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/financial/cartoes/:cartao_id/faturas",
+									"host": ["{{base_url}}"],
+									"path": ["financial", "cartoes", ":cartao_id", "faturas"],
+									"variable": [
+										{
+											"key": "cartao_id",
+											"value": "cartao-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Lançamentos do Cartão",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/financial/cartoes/:cartao_id/lancamentos",
+									"host": ["{{base_url}}"],
+									"path": ["financial", "cartoes", ":cartao_id", "lancamentos"],
+									"variable": [
+										{
+											"key": "cartao_id",
+											"value": "cartao-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Fornecedores",
+					"item": [
+						{
+							"name": "List Fornecedores",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/financial/fornecedores",
+									"host": ["{{base_url}}"],
+									"path": ["financial", "fornecedores"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Centros de Custo",
+					"item": [
+						{
+							"name": "List Centros de Custo",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/financial/centros-custo",
+									"host": ["{{base_url}}"],
+									"path": ["financial", "centros-custo"]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "HR",
+			"item": [
+				{
+					"name": "Funcionários",
+					"item": [
+						{
+							"name": "List Funcionários",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/hr/funcionarios?empresa_id={{empresa_id}}&status=ativo&skip=0&limit=100",
+									"host": ["{{base_url}}"],
+									"path": ["hr", "funcionarios"],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "status",
+											"value": "ativo"
+										},
+										{
+											"key": "departamento_id",
+											"value": "dept-uuid",
+											"disabled": true
+										},
+										{
+											"key": "cargo",
+											"value": "Desenvolvedor",
+											"disabled": true
+										},
+										{
+											"key": "tipo_contrato",
+											"value": "CLT",
+											"disabled": true
+										},
+										{
+											"key": "skip",
+											"value": "0"
+										},
+										{
+											"key": "limit",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Search Funcionários",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/hr/funcionarios/search?empresa_id={{empresa_id}}&q=João",
+									"host": ["{{base_url}}"],
+									"path": ["hr", "funcionarios", "search"],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "q",
+											"value": "João",
+											"description": "Search by name or CPF"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Funcionário",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/hr/funcionarios/:funcionario_id",
+									"host": ["{{base_url}}"],
+									"path": ["hr", "funcionarios", ":funcionario_id"],
+									"variable": [
+										{
+											"key": "funcionario_id",
+											"value": "funcionario-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Funcionário",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"cpf\": \"12345678900\",\n  \"cargo\": \"Desenvolvedor Full Stack\",\n  \"tipo_contrato\": \"CLT\",\n  \"salario\": 8000.00,\n  \"data_admissao\": \"2025-01-15\",\n  \"departamento_id\": \"dept-uuid-here\",\n  \"status\": \"ativo\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/hr/funcionarios",
+									"host": ["{{base_url}}"],
+									"path": ["hr", "funcionarios"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Funcionário",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"cargo\": \"Senior Full Stack Developer\",\n  \"salario\": 10000.00\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/hr/funcionarios/:funcionario_id",
+									"host": ["{{base_url}}"],
+									"path": ["hr", "funcionarios", ":funcionario_id"],
+									"variable": [
+										{
+											"key": "funcionario_id",
+											"value": "funcionario-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Registrar Demissão",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"data_demissao\": \"2025-12-31\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/hr/funcionarios/:funcionario_id/demissao?data_demissao=2025-12-31",
+									"host": ["{{base_url}}"],
+									"path": ["hr", "funcionarios", ":funcionario_id", "demissao"],
+									"query": [
+										{
+											"key": "data_demissao",
+											"value": "2025-12-31"
+										}
+									],
+									"variable": [
+										{
+											"key": "funcionario_id",
+											"value": "funcionario-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Férias Disponíveis",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/hr/funcionarios/:funcionario_id/ferias-disponiveis",
+									"host": ["{{base_url}}"],
+									"path": ["hr", "funcionarios", ":funcionario_id", "ferias-disponiveis"],
+									"variable": [
+										{
+											"key": "funcionario_id",
+											"value": "funcionario-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Contratos",
+					"item": [
+						{
+							"name": "List Contratos",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/hr/contratos",
+									"host": ["{{base_url}}"],
+									"path": ["hr", "contratos"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Férias",
+					"item": [
+						{
+							"name": "List Férias",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/hr/ferias",
+									"host": ["{{base_url}}"],
+									"path": ["hr", "ferias"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Benefícios",
+					"item": [
+						{
+							"name": "List Benefícios",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/hr/beneficios",
+									"host": ["{{base_url}}"],
+									"path": ["hr", "beneficios"]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Legal",
+			"item": [
+				{
+					"name": "Contratos",
+					"item": [
+						{
+							"name": "List Contratos",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/legal/contratos?empresa_id={{empresa_id}}&status=vigente&skip=0&limit=100",
+									"host": ["{{base_url}}"],
+									"path": ["legal", "contratos"],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "tipo",
+											"value": "fornecedor",
+											"description": "fornecedor, cliente, parceria, trabalhista",
+											"disabled": true
+										},
+										{
+											"key": "status",
+											"value": "vigente",
+											"description": "rascunho, aprovacao, vigente, rescindido, encerrado, vencido"
+										},
+										{
+											"key": "vencendo_em_dias",
+											"value": "30",
+											"disabled": true
+										},
+										{
+											"key": "skip",
+											"value": "0"
+										},
+										{
+											"key": "limit",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Contratos Vencimento",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/legal/contratos/vencimentos?empresa_id={{empresa_id}}&dias=30",
+									"host": ["{{base_url}}"],
+									"path": ["legal", "contratos", "vencimentos"],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "dias",
+											"value": "30"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Contrato",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/legal/contratos/:contrato_id",
+									"host": ["{{base_url}}"],
+									"path": ["legal", "contratos", ":contrato_id"],
+									"variable": [
+										{
+											"key": "contrato_id",
+											"value": "contrato-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Contrato",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"tipo\": \"fornecedor\",\n  \"parte_contraria\": \"Empresa XYZ Ltda\",\n  \"cnpj_cpf_contraparte\": \"12345678000190\",\n  \"objeto\": \"Prestação de serviços de TI\",\n  \"valor\": 50000.00,\n  \"data_inicio\": \"2025-01-01\",\n  \"data_fim\": \"2026-01-01\",\n  \"renovacao_automatica\": true,\n  \"status\": \"vigente\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/legal/contratos",
+									"host": ["{{base_url}}"],
+									"path": ["legal", "contratos"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Contrato",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"valor\": 55000.00,\n  \"status\": \"vigente\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/legal/contratos/:contrato_id",
+									"host": ["{{base_url}}"],
+									"path": ["legal", "contratos", ":contrato_id"],
+									"variable": [
+										{
+											"key": "contrato_id",
+											"value": "contrato-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Renovar Contrato",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"novo_fim\": \"2027-01-01\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/legal/contratos/:contrato_id/renovar?novo_fim=2027-01-01",
+									"host": ["{{base_url}}"],
+									"path": ["legal", "contratos", ":contrato_id", "renovar"],
+									"query": [
+										{
+											"key": "novo_fim",
+											"value": "2027-01-01"
+										}
+									],
+									"variable": [
+										{
+											"key": "contrato_id",
+											"value": "contrato-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Rescindir Contrato",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"data_rescisao\": \"2025-06-30\",\n  \"motivo\": \"Descumprimento de cláusulas contratuais\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/legal/contratos/:contrato_id/rescindir?data_rescisao=2025-06-30&motivo=Descumprimento",
+									"host": ["{{base_url}}"],
+									"path": ["legal", "contratos", ":contrato_id", "rescindir"],
+									"query": [
+										{
+											"key": "data_rescisao",
+											"value": "2025-06-30"
+										},
+										{
+											"key": "motivo",
+											"value": "Descumprimento"
+										}
+									],
+									"variable": [
+										{
+											"key": "contrato_id",
+											"value": "contrato-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Processos",
+					"item": [
+						{
+							"name": "List Processos",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/legal/processos",
+									"host": ["{{base_url}}"],
+									"path": ["legal", "processos"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Prazos",
+					"item": [
+						{
+							"name": "List Prazos",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/legal/prazos",
+									"host": ["{{base_url}}"],
+									"path": ["legal", "prazos"]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Procurement",
+			"item": [
+				{
+					"name": "Ordens de Compra",
+					"item": [
+						{
+							"name": "List Ordens de Compra",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/procurement/ordens-compra?empresa_id={{empresa_id}}&status=aguardando_aprovacao&skip=0&limit=100",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "ordens-compra"],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "status",
+											"value": "aguardando_aprovacao",
+											"description": "rascunho, aguardando_aprovacao, aprovada, pedido_emitido, recebido, cancelada"
+										},
+										{
+											"key": "fornecedor_id",
+											"value": "fornecedor-uuid",
+											"disabled": true
+										},
+										{
+											"key": "solicitante_id",
+											"value": "usuario-uuid",
+											"disabled": true
+										},
+										{
+											"key": "skip",
+											"value": "0"
+										},
+										{
+											"key": "limit",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Ordens Pendentes Aprovação",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/procurement/ordens-compra/pendentes-aprovacao?empresa_id={{empresa_id}}&aprovador_id={{usuario_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "ordens-compra", "pendentes-aprovacao"],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "aprovador_id",
+											"value": "{{usuario_id}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Ordem de Compra",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/procurement/ordens-compra/:ordem_id",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "ordens-compra", ":ordem_id"],
+									"variable": [
+										{
+											"key": "ordem_id",
+											"value": "ordem-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Ordem de Compra",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"solicitante_id\": \"{{usuario_id}}\",\n  \"fornecedor_id\": \"fornecedor-uuid-here\",\n  \"centro_custo\": \"TI-001\",\n  \"data_entrega_prevista\": \"2025-03-15\",\n  \"itens\": [\n    {\n      \"descricao\": \"Notebook Dell Latitude\",\n      \"quantidade\": 5,\n      \"valor_unitario\": 4500.00\n    },\n    {\n      \"descricao\": \"Monitor LG 27 polegadas\",\n      \"quantidade\": 5,\n      \"valor_unitario\": 1200.00\n    }\n  ]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/procurement/ordens-compra",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "ordens-compra"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Ordem de Compra",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"data_entrega_prevista\": \"2025-03-20\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/procurement/ordens-compra/:ordem_id",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "ordens-compra", ":ordem_id"],
+									"variable": [
+										{
+											"key": "ordem_id",
+											"value": "ordem-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Aprovar Ordem",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"aprovador_id\": \"{{usuario_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/procurement/ordens-compra/:ordem_id/aprovar?aprovador_id={{usuario_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "ordens-compra", ":ordem_id", "aprovar"],
+									"query": [
+										{
+											"key": "aprovador_id",
+											"value": "{{usuario_id}}"
+										}
+									],
+									"variable": [
+										{
+											"key": "ordem_id",
+											"value": "ordem-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Rejeitar Ordem",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"motivo\": \"Valor acima do orçamento aprovado\",\n  \"rejeitado_por\": \"{{usuario_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/procurement/ordens-compra/:ordem_id/rejeitar?motivo=Valor acima do orçamento&rejeitado_por={{usuario_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "ordens-compra", ":ordem_id", "rejeitar"],
+									"query": [
+										{
+											"key": "motivo",
+											"value": "Valor acima do orçamento"
+										},
+										{
+											"key": "rejeitado_por",
+											"value": "{{usuario_id}}"
+										}
+									],
+									"variable": [
+										{
+											"key": "ordem_id",
+											"value": "ordem-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Emitir Ordem",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/procurement/ordens-compra/:ordem_id/emitir",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "ordens-compra", ":ordem_id", "emitir"],
+									"variable": [
+										{
+											"key": "ordem_id",
+											"value": "ordem-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Receber Ordem",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"itens_recebidos\": [\n    {\n      \"descricao\": \"Notebook Dell Latitude\",\n      \"quantidade_recebida\": 5,\n      \"condicao\": \"perfeito\"\n    }\n  ]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/procurement/ordens-compra/:ordem_id/receber",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "ordens-compra", ":ordem_id", "receber"],
+									"variable": [
+										{
+											"key": "ordem_id",
+											"value": "ordem-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Aprovações",
+					"item": [
+						{
+							"name": "List Aprovações",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/procurement/aprovacoes",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "aprovacoes"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Analytics",
+					"item": [
+						{
+							"name": "Get Analytics",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/procurement/analytics",
+									"host": ["{{base_url}}"],
+									"path": ["procurement", "analytics"]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Documents",
+			"item": [
+				{
+					"name": "Documents",
+					"item": [
+						{
+							"name": "List Documents",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/documents/?empresa_id={{empresa_id}}&status=ativo&skip=0&limit=100",
+									"host": ["{{base_url}}"],
+									"path": ["documents", ""],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "departamento",
+											"value": "juridico",
+											"description": "juridico, financeiro, rh, suprimentos",
+											"disabled": true
+										},
+										{
+											"key": "tipo",
+											"value": "contrato",
+											"description": "contrato, nota_fiscal, curriculo, politica",
+											"disabled": true
+										},
+										{
+											"key": "status",
+											"value": "ativo"
+										},
+										{
+											"key": "skip",
+											"value": "0"
+										},
+										{
+											"key": "limit",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Document",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/documents/:document_id",
+									"host": ["{{base_url}}"],
+									"path": ["documents", ":document_id"],
+									"variable": [
+										{
+											"key": "document_id",
+											"value": "document-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Upload Document",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}",
+											"type": "text"
+										},
+										{
+											"key": "departamento",
+											"value": "juridico",
+											"type": "text"
+										},
+										{
+											"key": "tipo",
+											"value": "contrato",
+											"type": "text"
+										},
+										{
+											"key": "titulo",
+											"value": "Contrato de Prestação de Serviços",
+											"type": "text"
+										},
+										{
+											"key": "metadata",
+											"value": "{\"numero_contrato\": \"CT-2025-001\"}",
+											"type": "text"
+										},
+										{
+											"key": "file",
+											"type": "file",
+											"src": "/path/to/file.pdf"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/documents/upload",
+									"host": ["{{base_url}}"],
+									"path": ["documents", "upload"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Document",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"departamento\": \"juridico\",\n  \"tipo\": \"contrato\",\n  \"titulo\": \"Contrato de Prestação de Serviços\",\n  \"conteudo_original\": \"Este contrato estabelece...\",\n  \"meta_data\": {\"numero_contrato\": \"CT-2025-001\"},\n  \"arquivo_url\": \"s3://bucket/path/to/file.pdf\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/documents/",
+									"host": ["{{base_url}}"],
+									"path": ["documents", ""]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Document",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"titulo\": \"Contrato de Prestação de Serviços - Atualizado\",\n  \"status\": \"ativo\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/documents/:document_id",
+									"host": ["{{base_url}}"],
+									"path": ["documents", ":document_id"],
+									"variable": [
+										{
+											"key": "document_id",
+											"value": "document-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Document",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/documents/:document_id",
+									"host": ["{{base_url}}"],
+									"path": ["documents", ":document_id"],
+									"variable": [
+										{
+											"key": "document_id",
+											"value": "document-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Search",
+					"item": [
+						{
+							"name": "Semantic Search",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"text\": \"contratos de fornecedores de TI\",\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"departamento\": \"juridico\",\n  \"tipo\": \"contrato\",\n  \"limit\": 10,\n  \"similarity_threshold\": 0.7\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/documents/search/semantic",
+									"host": ["{{base_url}}"],
+									"path": ["documents", "search", "semantic"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Find Similar Documents",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"document_id\": \"document-uuid-here\",\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"limit\": 5\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/documents/search/similar-documents",
+									"host": ["{{base_url}}"],
+									"path": ["documents", "search", "similar-documents"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Search by Metadata",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/documents/search/by-metadata?empresa_id={{empresa_id}}&key=numero_contrato&value=CT-2025-001",
+									"host": ["{{base_url}}"],
+									"path": ["documents", "search", "by-metadata"],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "key",
+											"value": "numero_contrato"
+										},
+										{
+											"key": "value",
+											"value": "CT-2025-001"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Embeddings",
+					"item": [
+						{
+							"name": "Generate Embedding",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/documents/embeddings",
+									"host": ["{{base_url}}"],
+									"path": ["documents", "embeddings"]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "AI Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/ai/health",
+							"host": ["{{base_url}}"],
+							"path": ["ai", "health"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Agents",
+					"item": [
+						{
+							"name": "List All Agents",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/ai/agents/",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "agents", ""]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Available Crews",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/ai/agents/crews",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "agents", "crews"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Agents Health",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/ai/agents/health",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "agents", "health"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Chat",
+					"item": [
+						{
+							"name": "Chat with AI Agent",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"message\": \"Show me all pending invoices for this month\",\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"metadata\": {\n    \"priority\": \"high\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/ai/chat/",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "chat", ""]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Financial Query",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"message\": \"Analyze my company's accounts payable and identify which ones are overdue\",\n  \"empresa_id\": \"{{empresa_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/ai/chat/",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "chat", ""]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "HR Query",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"message\": \"Who has vacation scheduled for next month?\",\n  \"empresa_id\": \"{{empresa_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/ai/chat/",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "chat", ""]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Legal Query",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"message\": \"What legal deadlines are coming up this month?\",\n  \"empresa_id\": \"{{empresa_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/ai/chat/",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "chat", ""]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Document Search Query",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"message\": \"Find all contracts related to suppliers from 2024\",\n  \"empresa_id\": \"{{empresa_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/ai/chat/",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "chat", ""]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Streaming Chat",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"message\": \"Generate a summary of our financial performance\",\n  \"empresa_id\": \"{{empresa_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/ai/chat/stream",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "chat", "stream"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Workflows",
+					"item": [
+						{
+							"name": "Trigger Financial Analysis",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"workflow_type\": \"financial_analysis\",\n  \"input_data\": {\n    \"analysis_type\": \"cash_flow\"\n  },\n  \"priority\": 5\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/ai/workflows/trigger",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "workflows", "trigger"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Trigger Document Review",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"workflow_type\": \"document_review\",\n  \"input_data\": {\n    \"query\": \"Review all legal contracts from 2024\"\n  },\n  \"priority\": 7\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/ai/workflows/trigger",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "workflows", "trigger"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Trigger General Task",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"workflow_type\": \"general_task\",\n  \"input_data\": {\n    \"task\": \"Analyze employee satisfaction based on recent HR data\"\n  },\n  \"priority\": 5\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/ai/workflows/trigger",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "workflows", "trigger"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Workflow Status",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/ai/workflows/:workflow_id",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "workflows", ":workflow_id"],
+									"variable": [
+										{
+											"key": "workflow_id",
+											"value": "your-workflow-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Workflows",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/ai/workflows/?empresa_id={{empresa_id}}&status=completed&limit=50",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "workflows", ""],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "status",
+											"value": "completed"
+										},
+										{
+											"key": "limit",
+											"value": "50"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Pending Workflows",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/ai/workflows/?empresa_id={{empresa_id}}&status=pending",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "workflows", ""],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "status",
+											"value": "pending"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Running Workflows",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/ai/workflows/?empresa_id={{empresa_id}}&status=running",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "workflows", ""],
+									"query": [
+										{
+											"key": "empresa_id",
+											"value": "{{empresa_id}}"
+										},
+										{
+											"key": "status",
+											"value": "running"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Cancel Workflow",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/ai/workflows/:workflow_id",
+									"host": ["{{base_url}}"],
+									"path": ["ai", "workflows", ":workflow_id"],
+									"variable": [
+										{
+											"key": "workflow_id",
+											"value": "your-workflow-uuid-here"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	]
+}

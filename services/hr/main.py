@@ -1,0 +1,64 @@
+"""
+HR microservice main application.
+Handles employee management, contracts, and HR operations.
+"""
+
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
+from shared.database.connection import get_db
+from shared.config.settings import settings
+import uvicorn
+
+# Create FastAPI app
+app = FastAPI(
+    title="HR Service",
+    description="Human Resources management microservice",
+    version="1.0.0",
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/")
+async def root():
+    """Root endpoint."""
+    return {
+        "service": "HR Service",
+        "version": "1.0.0",
+        "status": "operational",
+        "features": [
+            "employee_management",
+            "contracts",
+            "vacation_tracking",
+            "benefits_management"
+        ]
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy"}
+
+
+# Import routers
+from services.hr.routers import funcionarios, contratos, ferias, beneficios
+
+# Include routers
+app.include_router(funcionarios.router, prefix="/funcionarios", tags=["Funcionários"])
+app.include_router(contratos.router, prefix="/contratos", tags=["Contratos de Trabalho"])
+app.include_router(ferias.router, prefix="/ferias", tags=["Férias"])
+app.include_router(beneficios.router, prefix="/beneficios", tags=["Benefícios"])
+
+
+if __name__ == "__main__":
+    port = int(settings.hr_service_port)
+    uvicorn.run(app, host="0.0.0.0", port=port)
