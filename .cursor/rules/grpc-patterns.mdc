@@ -1,0 +1,440 @@
+# gRPC Patterns and Best Practices
+
+## Protocol Buffer Design
+
+### Message Structure
+```protobuf
+syntax = "proto3";
+
+package services.user.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// Service definition
+service UserService {
+  // Unary RPC
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  // Server streaming
+  rpc ListUsers(ListUsersRequest) returns (stream User);
+
+  // Client streaming
+  rpc CreateUsers(stream CreateUserRequest) returns (CreateUsersResponse);
+
+  // Bidirectional streaming
+  rpc Chat(stream ChatMessage) returns (stream ChatMessage);
+}
+
+// Request/Response messages
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+// Domain model
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  google.protobuf.Timestamp created_at = 4;
+  repeated string roles = 5;
+  map<string, string> metadata = 6;
+}
+```
+
+### Versioning Strategy
+```protobuf
+// Use package versioning
+package services.user.v1;  // v1
+package services.user.v2;  // v2 when breaking changes
+
+// Field deprecation
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3 [deprecated = true];  // Mark as deprecated
+  string full_name = 4;  // New field
+}
+```
+
+## Python gRPC Implementation
+
+### Server Implementation
+```python
+import grpc
+from grpc import aio
+from concurrent import futures
+import asyncio
+
+from proto import user_pb2, user_pb2_grpc
+from src.services.user_service import UserService
+
+class UserServicer(user_pb2_grpc.UserServiceServicer):
+    def __init__(self, service: UserService):
+        self.service = service
+
+    async def GetUser(
+        self,
+        request: user_pb2.GetUserRequest,
+        context: grpc.aio.ServicerContext
+    ) -> user_pb2.GetUserResponse:
+        """Get a single user."""
+        try:
+            # Add request metadata to context
+            for key, value in context.invocation_metadata():
+                if key == 'request-id':
+                    context.set_trailing_metadata([('request-id', value)])
+
+            # Business logic
+            user = await self.service.get_user(request.user_id)
+
+            if not user:
+                await context.abort(
+                    grpc.StatusCode.NOT_FOUND,
+                    f"User {request.user_id} not found"
+                )
+
+            return user_pb2.GetUserResponse(
+                user=self._to_proto_user(user)
+            )
+        except Exception as e:
+            logger.error("Error getting user", error=str(e))
+            await context.abort(
+                grpc.StatusCode.INTERNAL,
+                "Internal server error"
+            )
+
+    async def ListUsers(
+        self,
+        request: user_pb2.ListUsersRequest,
+        context: grpc.aio.ServicerContext
+    ):
+        """Server streaming example."""
+        async for user in self.service.list_users(request.limit):
+            if context.cancelled():
+                return
+            yield self._to_proto_user(user)
+
+    def _to_proto_user(self, user) -> user_pb2.User:
+        """Convert domain model to proto."""
+        return user_pb2.User(
+            id=str(user.id),
+            email=user.email,
+            name=user.name,
+            created_at=timestamp_pb2.Timestamp(seconds=int(user.created_at.timestamp()))
+        )
+
+async def serve():
+    """Start gRPC server."""
+    server = aio.server()
+
+    # Add servicer
+    user_service = UserService()
+    user_pb2_grpc.add_UserServiceServicer_to_server(
+        UserServicer(user_service),
+        server
+    )
+
+    # Configure server
+    server.add_insecure_port('[::]:50051')
+
+    # Add interceptors
+    interceptors = [
+        LoggingInterceptor(),
+        AuthInterceptor(),
+        MetricsInterceptor()
+    ]
+
+    await server.start()
+    await server.wait_for_termination()
+```
+
+### Client Implementation
+```python
+import grpc
+from grpc import aio
+from typing import Optional
+import asyncio
+
+from proto import user_pb2, user_pb2_grpc
+
+class UserClient:
+    def __init__(self, target: str = 'localhost:50051'):
+        self.target = target
+        self.channel: Optional[aio.Channel] = None
+        self.stub: Optional[user_pb2_grpc.UserServiceStub] = None
+
+    async def connect(self):
+        """Establish connection with retry logic."""
+        options = [
+            ('grpc.keepalive_time_ms', 10000),
+            ('grpc.keepalive_timeout_ms', 5000),
+            ('grpc.keepalive_permit_without_calls', True),
+            ('grpc.max_reconnect_backoff_ms', 5000),
+        ]
+
+        self.channel = aio.insecure_channel(self.target, options=options)
+        self.stub = user_pb2_grpc.UserServiceStub(self.channel)
+
+    async def get_user(self, user_id: str) -> Optional[user_pb2.User]:
+        """Get user with timeout and retry."""
+        try:
+            request = user_pb2.GetUserRequest(user_id=user_id)
+            response = await self.stub.GetUser(
+                request,
+                timeout=5.0,
+                metadata=[
+                    ('request-id', generate_request_id()),
+                    ('authorization', get_token())
+                ]
+            )
+            return response.user
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.NOT_FOUND:
+                return None
+            raise
+
+    async def list_users_stream(self, limit: int = 100):
+        """Handle server streaming."""
+        request = user_pb2.ListUsersRequest(limit=limit)
+
+        async for user in self.stub.ListUsers(request):
+            yield user
+
+    async def close(self):
+        """Clean up connection."""
+        if self.channel:
+            await self.channel.close()
+```
+
+## Connection Management
+
+### Connection Pooling
+```python
+from typing import Dict, List
+import random
+
+class GrpcConnectionPool:
+    def __init__(self, target: str, size: int = 5):
+        self.target = target
+        self.size = size
+        self.channels: List[aio.Channel] = []
+        self.stubs: List[user_pb2_grpc.UserServiceStub] = []
+
+    async def initialize(self):
+        """Create connection pool."""
+        for _ in range(self.size):
+            channel = aio.insecure_channel(self.target)
+            self.channels.append(channel)
+            self.stubs.append(user_pb2_grpc.UserServiceStub(channel))
+
+    def get_stub(self) -> user_pb2_grpc.UserServiceStub:
+        """Get random stub from pool."""
+        return random.choice(self.stubs)
+
+    async def close_all(self):
+        """Close all connections."""
+        for channel in self.channels:
+            await channel.close()
+```
+
+### Circuit Breaker Pattern
+```python
+from circuitbreaker import circuit
+
+class ResilientUserClient:
+    def __init__(self, client: UserClient):
+        self.client = client
+
+    @circuit(failure_threshold=5, recovery_timeout=30, expected_exception=grpc.RpcError)
+    async def get_user(self, user_id: str):
+        """Get user with circuit breaker."""
+        return await self.client.get_user(user_id)
+```
+
+## Error Handling
+
+### Status Codes
+```python
+# Server-side error handling
+async def handle_request(request, context):
+    try:
+        # Business logic
+        result = await process(request)
+        return result
+    except ValidationError as e:
+        await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
+    except NotFoundError as e:
+        await context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+    except PermissionError as e:
+        await context.abort(grpc.StatusCode.PERMISSION_DENIED, str(e))
+    except TimeoutError as e:
+        await context.abort(grpc.StatusCode.DEADLINE_EXCEEDED, str(e))
+    except Exception as e:
+        logger.error("Unexpected error", error=str(e))
+        await context.abort(grpc.StatusCode.INTERNAL, "Internal server error")
+```
+
+### Client Error Handling
+```python
+async def safe_call(stub, request):
+    """Handle gRPC errors gracefully."""
+    try:
+        return await stub.Method(request)
+    except grpc.RpcError as e:
+        error_mapping = {
+            grpc.StatusCode.NOT_FOUND: NotFoundError,
+            grpc.StatusCode.INVALID_ARGUMENT: ValidationError,
+            grpc.StatusCode.PERMISSION_DENIED: AuthorizationError,
+            grpc.StatusCode.DEADLINE_EXCEEDED: TimeoutError,
+        }
+
+        exception_class = error_mapping.get(e.code(), ServiceError)
+        raise exception_class(e.details()) from e
+```
+
+## Interceptors
+
+### Server Interceptor
+```python
+class LoggingInterceptor(grpc.aio.ServerInterceptor):
+    async def intercept_service(self, continuation, handler_call_details):
+        # Log request
+        logger.info(
+            "grpc_request",
+            method=handler_call_details.method,
+            metadata=dict(handler_call_details.invocation_metadata)
+        )
+
+        # Continue with request
+        result = await continuation(handler_call_details)
+
+        # Log response
+        logger.info("grpc_response", method=handler_call_details.method)
+
+        return result
+```
+
+### Client Interceptor
+```python
+class MetricsInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
+    async def intercept_unary_unary(self, continuation, client_call_details, request):
+        start_time = time.time()
+
+        try:
+            response = await continuation(client_call_details, request)
+
+            # Record success metrics
+            grpc_request_duration.labels(
+                method=client_call_details.method,
+                status="success"
+            ).observe(time.time() - start_time)
+
+            return response
+        except Exception as e:
+            # Record failure metrics
+            grpc_request_duration.labels(
+                method=client_call_details.method,
+                status="failure"
+            ).observe(time.time() - start_time)
+            raise
+```
+
+## Streaming Patterns
+
+### Server Streaming
+```python
+async def list_items(request, context):
+    """Stream items to client."""
+    page_size = 100
+    offset = 0
+
+    while True:
+        items = await fetch_items(offset, page_size)
+        if not items:
+            break
+
+        for item in items:
+            if context.cancelled():
+                return
+            yield item_to_proto(item)
+
+        offset += page_size
+```
+
+### Bidirectional Streaming
+```python
+async def chat(request_iterator, context):
+    """Handle bidirectional chat."""
+    async for message in request_iterator:
+        # Process incoming message
+        response = await process_chat_message(message)
+
+        # Send response
+        yield response
+
+        # Check for cancellation
+        if context.cancelled():
+            break
+```
+
+## Testing
+
+### Service Testing
+```python
+import pytest
+from grpc.testing import server_from_dictionary
+
+@pytest.mark.asyncio
+async def test_get_user():
+    # Create test server
+    servicer = UserServicer(mock_service)
+    server = server_from_dictionary(
+        {user_pb2.DESCRIPTOR.services_by_name['UserService']: servicer},
+        grpc.aio.server()
+    )
+
+    # Create client
+    async with server:
+        async with grpc.aio.insecure_channel(server.target) as channel:
+            stub = user_pb2_grpc.UserServiceStub(channel)
+
+            # Test
+            request = user_pb2.GetUserRequest(user_id="123")
+            response = await stub.GetUser(request)
+
+            assert response.user.id == "123"
+```
+
+## Performance Optimization
+
+### Message Size
+- Keep messages under 4MB (gRPC default limit)
+- Use streaming for large datasets
+- Compress large payloads
+
+### Connection Reuse
+```python
+# Reuse channels across requests
+class ServiceManager:
+    _channels: Dict[str, aio.Channel] = {}
+
+    @classmethod
+    async def get_channel(cls, target: str) -> aio.Channel:
+        if target not in cls._channels:
+            cls._channels[target] = aio.insecure_channel(target)
+        return cls._channels[target]
+```
+
+### Load Balancing
+```python
+# Client-side load balancing
+channel = grpc.aio.insecure_channel(
+    'dns:///myservice:50051',
+    options=[('grpc.lb_policy_name', 'round_robin')]
+)
+```

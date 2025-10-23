@@ -1,0 +1,520 @@
+# Testing Standards for Python Microservices
+
+## Test Structure and Organization
+
+### Directory Layout
+```
+service-name/
+├── tests/
+│   ├── unit/                # Unit tests
+│   │   ├── test_services.py
+│   │   ├── test_repositories.py
+│   │   └── test_models.py
+│   ├── integration/          # Integration tests
+│   │   ├── test_api.py
+│   │   ├── test_grpc.py
+│   │   └── test_database.py
+│   ├── e2e/                  # End-to-end tests
+│   │   ├── test_workflows.py
+│   │   └── test_scenarios.py
+│   ├── performance/          # Load tests
+│   │   ├── test_load.py
+│   │   └── test_stress.py
+│   ├── fixtures/            # Test fixtures
+│   │   ├── __init__.py
+│   │   └── factories.py
+│   ├── conftest.py          # Pytest configuration
+│   └── pytest.ini           # Pytest settings
+```
+
+## Testing Framework
+
+### Pytest Configuration
+```ini
+# pytest.ini
+[tool:pytest]
+minversion = 7.0
+testpaths = tests
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+asyncio_mode = auto
+markers =
+    unit: Unit tests
+    integration: Integration tests
+    e2e: End-to-end tests
+    slow: Slow tests
+    performance: Performance tests
+addopts =
+    --strict-markers
+    --cov=src
+    --cov-report=term-missing
+    --cov-report=html
+    --cov-fail-under=80
+```
+
+### Fixtures and Factories
+```python
+# tests/conftest.py
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from src.main import app
+from src.core.database import Base
+
+@pytest.fixture(scope="session")
+async def engine():
+    """Create test database engine."""
+    engine = create_async_engine(
+        "postgresql+asyncpg://test:test@localhost/test_db"
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
+
+@pytest.fixture
+async def db_session(engine):
+    """Create database session for tests."""
+    async with AsyncSession(engine) as session:
+        yield session
+        await session.rollback()
+
+@pytest.fixture
+async def client():
+    """Create test client."""
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
+
+@pytest.fixture
+async def authenticated_client(client):
+    """Create authenticated test client."""
+    token = await get_test_token()
+    client.headers["Authorization"] = f"Bearer {token}"
+    return client
+```
+
+## Unit Testing
+
+### Service Layer Testing
+```python
+import pytest
+from unittest.mock import AsyncMock, Mock
+from uuid import uuid4
+from src.services.user_service import UserService
+from src.schemas.user import UserCreate
+
+class TestUserService:
+    @pytest.fixture
+    def mock_repository(self):
+        """Create mock repository."""
+        return AsyncMock()
+
+    @pytest.fixture
+    def service(self, mock_repository):
+        """Create service with mocked dependencies."""
+        return UserService(repository=mock_repository)
+
+    @pytest.mark.asyncio
+    async def test_create_user_success(self, service, mock_repository):
+        """Test successful user creation."""
+        # Arrange
+        user_data = UserCreate(
+            email="test@example.com",
+            name="Test User"
+        )
+        expected_user = Mock(id=uuid4(), **user_data.dict())
+        mock_repository.create.return_value = expected_user
+
+        # Act
+        result = await service.create_user(user_data)
+
+        # Assert
+        assert result.id == expected_user.id
+        assert result.email == user_data.email
+        mock_repository.create.assert_called_once_with(user_data)
+
+    @pytest.mark.asyncio
+    async def test_create_user_duplicate(self, service, mock_repository):
+        """Test duplicate user creation."""
+        # Arrange
+        user_data = UserCreate(email="existing@example.com", name="Test")
+        mock_repository.get_by_email.return_value = Mock()  # User exists
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="User already exists"):
+            await service.create_user(user_data)
+```
+
+### Repository Testing
+```python
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.repositories.user_repository import UserRepository
+from src.models.user import User
+
+class TestUserRepository:
+    @pytest.fixture
+    def repository(self, db_session: AsyncSession):
+        """Create repository with test database."""
+        return UserRepository(db_session)
+
+    @pytest.mark.asyncio
+    async def test_create_user(self, repository, db_session):
+        """Test user creation in database."""
+        # Arrange
+        user_data = {
+            "email": "test@example.com",
+            "name": "Test User"
+        }
+
+        # Act
+        user = await repository.create(user_data)
+
+        # Assert
+        assert user.id is not None
+        assert user.email == user_data["email"]
+
+        # Verify in database
+        db_user = await repository.get(user.id)
+        assert db_user.email == user_data["email"]
+```
+
+## Integration Testing
+
+### API Testing
+```python
+import pytest
+from httpx import AsyncClient
+from src.main import app
+
+class TestUserAPI:
+    @pytest.mark.asyncio
+    async def test_create_user_endpoint(self, client: AsyncClient):
+        """Test user creation via API."""
+        # Arrange
+        user_data = {
+            "email": "test@example.com",
+            "name": "Test User",
+            "password": "SecurePass123!"
+        }
+
+        # Act
+        response = await client.post("/api/v1/users", json=user_data)
+
+        # Assert
+        assert response.status_code == 201
+        data = response.json()
+        assert data["email"] == user_data["email"]
+        assert "password" not in data  # Password should not be returned
+
+    @pytest.mark.asyncio
+    async def test_get_user_not_found(self, client: AsyncClient):
+        """Test getting non-existent user."""
+        # Act
+        response = await client.get("/api/v1/users/00000000-0000-0000-0000-000000000000")
+
+        # Assert
+        assert response.status_code == 404
+        assert response.json()["detail"] == "User not found"
+```
+
+### gRPC Testing
+```python
+import pytest
+import grpc
+from grpc.testing import server_from_dictionary
+from proto import user_pb2, user_pb2_grpc
+
+class TestUserGrpcService:
+    @pytest.fixture
+    async def grpc_server(self, service):
+        """Create test gRPC server."""
+        servicer = UserServicer(service)
+        server = server_from_dictionary(
+            {user_pb2.DESCRIPTOR.services_by_name['UserService']: servicer},
+            grpc.aio.server()
+        )
+        port = server.add_insecure_port('[::]:0')
+        await server.start()
+        yield f'localhost:{port}'
+        await server.stop(0)
+
+    @pytest.mark.asyncio
+    async def test_get_user_grpc(self, grpc_server):
+        """Test getting user via gRPC."""
+        # Create channel and stub
+        async with grpc.aio.insecure_channel(grpc_server) as channel:
+            stub = user_pb2_grpc.UserServiceStub(channel)
+
+            # Act
+            request = user_pb2.GetUserRequest(user_id="test-id")
+            response = await stub.GetUser(request)
+
+            # Assert
+            assert response.user.id == "test-id"
+```
+
+## End-to-End Testing
+
+### Workflow Testing
+```python
+import pytest
+from httpx import AsyncClient
+
+class TestUserWorkflow:
+    @pytest.mark.asyncio
+    @pytest.mark.e2e
+    async def test_complete_user_journey(self, client: AsyncClient):
+        """Test complete user journey from registration to deletion."""
+        # 1. Register user
+        register_response = await client.post("/api/v1/register", json={
+            "email": "journey@example.com",
+            "password": "SecurePass123!",
+            "name": "Journey User"
+        })
+        assert register_response.status_code == 201
+        user_id = register_response.json()["id"]
+
+        # 2. Login
+        login_response = await client.post("/api/v1/login", json={
+            "email": "journey@example.com",
+            "password": "SecurePass123!"
+        })
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+
+        # 3. Get profile
+        client.headers["Authorization"] = f"Bearer {token}"
+        profile_response = await client.get("/api/v1/profile")
+        assert profile_response.status_code == 200
+        assert profile_response.json()["email"] == "journey@example.com"
+
+        # 4. Update profile
+        update_response = await client.put("/api/v1/profile", json={
+            "name": "Updated Journey User"
+        })
+        assert update_response.status_code == 200
+
+        # 5. Delete account
+        delete_response = await client.delete(f"/api/v1/users/{user_id}")
+        assert delete_response.status_code == 204
+```
+
+## Performance Testing
+
+### Load Testing with Locust
+```python
+# tests/performance/locustfile.py
+from locust import HttpUser, task, between
+import random
+
+class UserLoadTest(HttpUser):
+    wait_time = between(1, 3)
+
+    def on_start(self):
+        """Login and get token."""
+        response = self.client.post("/api/v1/login", json={
+            "email": "load@example.com",
+            "password": "password123"
+        })
+        self.token = response.json()["access_token"]
+        self.client.headers["Authorization"] = f"Bearer {self.token}"
+
+    @task(3)
+    def get_profile(self):
+        """Get user profile."""
+        self.client.get("/api/v1/profile")
+
+    @task(1)
+    def update_profile(self):
+        """Update user profile."""
+        self.client.put("/api/v1/profile", json={
+            "name": f"User {random.randint(1, 1000)}"
+        })
+```
+
+### Stress Testing
+```python
+import pytest
+import asyncio
+from httpx import AsyncClient
+
+@pytest.mark.asyncio
+@pytest.mark.performance
+async def test_concurrent_requests(client: AsyncClient):
+    """Test handling of concurrent requests."""
+    # Create 100 concurrent requests
+    tasks = []
+    for i in range(100):
+        tasks.append(client.get(f"/api/v1/users/{i}"))
+
+    # Execute concurrently
+    responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Verify responses
+    success_count = sum(1 for r in responses if not isinstance(r, Exception))
+    assert success_count >= 95  # At least 95% success rate
+```
+
+## Test Data Management
+
+### Factories with Factory Boy
+```python
+# tests/fixtures/factories.py
+import factory
+from factory.fuzzy import FuzzyText
+from src.models.user import User
+
+class UserFactory(factory.Factory):
+    class Meta:
+        model = User
+
+    id = factory.Faker("uuid4")
+    email = factory.Faker("email")
+    name = factory.Faker("name")
+    is_active = True
+
+    @factory.post_generation
+    def set_password(obj, create, extracted, **kwargs):
+        if extracted:
+            obj.set_password(extracted)
+```
+
+### Database Seeding
+```python
+# tests/fixtures/seed.py
+async def seed_test_data(db_session):
+    """Seed database with test data."""
+    users = [
+        UserFactory.build() for _ in range(10)
+    ]
+    db_session.add_all(users)
+    await db_session.commit()
+    return users
+```
+
+## Mocking Strategies
+
+### External Service Mocking
+```python
+import pytest
+from unittest.mock import patch, AsyncMock
+
+@pytest.fixture
+def mock_external_service():
+    """Mock external service calls."""
+    with patch("src.services.external.ExternalClient") as mock:
+        client = AsyncMock()
+        client.fetch_data.return_value = {"status": "success"}
+        mock.return_value = client
+        yield client
+```
+
+### gRPC Client Mocking
+```python
+@pytest.fixture
+def mock_grpc_client():
+    """Mock gRPC client."""
+    with patch("src.grpc.clients.UserClient") as mock:
+        client = AsyncMock()
+        client.get_user.return_value = Mock(id="123", name="Test")
+        mock.return_value = client
+        yield client
+```
+
+## Coverage Requirements
+
+### Coverage Configuration
+```ini
+# .coveragerc
+[run]
+source = src
+omit =
+    */tests/*
+    */migrations/*
+    */__init__.py
+    */config.py
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+
+[html]
+directory = htmlcov
+```
+
+### Coverage Targets
+- Overall: 80% minimum
+- Critical paths: 95% minimum
+- Business logic: 90% minimum
+- API endpoints: 100%
+- Error handling: 85% minimum
+
+## Test Execution
+
+### Running Tests
+```bash
+# Run all tests
+pytest
+
+# Run specific test categories
+pytest -m unit
+pytest -m integration
+pytest -m "not slow"
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run in parallel
+pytest -n auto
+
+# Run with verbose output
+pytest -v
+
+# Run specific test file
+pytest tests/unit/test_services.py
+
+# Run with debugging
+pytest --pdb
+```
+
+### CI/CD Integration
+```yaml
+# GitHub Actions example
+name: Tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv sync
+      - name: Run tests
+        run: |
+          pytest --cov=src --cov-report=xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+```

@@ -6,17 +6,20 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN pip install poetry
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
 
-# Copy poetry files
-COPY pyproject.toml poetry.lock* ./
+# Copy project files
+COPY pyproject.toml ./
 
-# Install dependencies
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+# Create virtual environment and install dependencies using uv
+RUN uv venv && \
+    . .venv/bin/activate && \
+    uv pip install -e .
 
 # Copy application code
 COPY . .

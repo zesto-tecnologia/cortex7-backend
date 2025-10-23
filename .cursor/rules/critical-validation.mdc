@@ -1,0 +1,198 @@
+---
+alwaysApply: true
+---
+
+<critical>
+**MANDATORY REQUIREMENTS FOR PYTHON/FASTAPI/MICROSERVICES PROJECTS:**
+
+## Core Validation Rules
+
+- **ALWAYS** check service dependencies and API contracts before writing tests
+- **ALWAYS** verify against PRD and tech specs - NEVER make assumptions
+- **NEVER** use workarounds, especially in tests - implement proper solutions
+- **MUST** follow all established project standards:
+    - Architecture patterns: @.cursor/rules/architecture.mdc
+    - Python coding standards: @.cursor/rules/python-standards.mdc
+    - Testing requirements: @.cursor/rules/testing-standards.mdc
+    - API standards: @.cursor/rules/api-standards.mdc
+    - gRPC patterns: @.cursor/rules/grpc-patterns.mdc
+    - Security rules: @.cursor/rules/security.mdc
+    - Deployment rules: @.cursor/rules/deployment.mdc
+    - Constants & magic numbers: @.cursor/rules/magic-numbers.mdc
+
+## Context and Configuration Management
+
+- **MUST** use FastAPI's `Request` object or dependency injection for request-scoped data
+- **NEVER** create global singletons for configuration - use pydantic Settings
+- **MUST** use dependency injection for service dependencies
+- **NEVER** use hardcoded configuration values - always use environment variables
+- **MUST** use service discovery for inter-service communication
+
+## Python & Type Safety
+
+- **MUST** use Python 3.11+ with type hints everywhere
+- **MUST** use Pydantic V2 models for all data validation
+- **MUST** define proper types for all API requests/responses
+- **MUST** use validators and guards for runtime validation
+- **NEVER** use `Any` type unless absolutely necessary (external libraries)
+- **MUST** handle `None` and `Optional` types explicitly
+- **MUST** use async/await for all I/O operations
+- **NEVER** assume types - always validate with isinstance() or Pydantic
+- **MUST** handle exceptions with proper exception hierarchy
+
+## Testing Requirements
+
+- **MUST** run `pytest` before completing ANY subtask
+- **MUST** achieve 80%+ code coverage for new code
+- **MUST** use pytest with pytest-asyncio for async tests
+- **NEVER** skip tests - implementation is incomplete without tests
+- **MUST** mock external services and gRPC clients in tests
+- **MUST** test both REST and gRPC endpoints
+- **YOU CAN ONLY** finish a task if `pytest` passes with no errors
+
+## Code Quality Gates
+
+- **MUST** run ruff/black/mypy before completing any subtask
+- **MUST** fix all mypy type errors
+- **MUST** follow black formatting
+- **MUST** pass ruff linting
+- **YOU CANNOT** finish a task if quality checks fail
+
+## External Dependencies & Research
+
+- **YOU MUST** use Perplexity MCP and Context7 to get updated information for Python libraries
+- **NEVER RELY** only on model training data - verify current library versions
+- **MUST** check PyPI for latest stable versions before adding dependencies
+- **MUST** use production-validated libraries only
+- **MUST** verify compatibility with Python 3.11+
+
+## Complex Task Management
+
+### Before Initiating Complex Services
+- **YOU MUST** use Zen MCP to analyze service architecture BEFORE starting
+- **MUST** understand service boundaries and bounded contexts
+- **MUST** identify all proto files and contracts needed
+- **MUST** understand database schema and migrations
+
+### After Completing Complex Services
+- **YOU MUST** use Zen MCP codereview tool AFTER finishing
+- **YOU MUST ALWAYS** show all recommendations/issues
+- **MUST** verify gRPC contracts are complete
+- **MUST** ensure proper error handling across service boundaries
+
+## Environment-Specific Rules
+
+### Python Runtime
+- **MUST** use Python 3.11+ features (match/case, union types, etc.)
+- **MUST** use async/await throughout for non-blocking I/O
+- **MUST** use UV package manager for dependency management
+- **NEVER** mix pip and UV in the same project
+
+### FastAPI Framework
+- **MUST** use FastAPI dependency injection system
+- **MUST** use FastAPI middleware for cross-cutting concerns
+- **MUST** use Pydantic for request/response validation
+- **MUST** follow FastAPI best practices for async handlers
+- **NEVER** use blocking I/O in async routes
+
+### Microservices Structure
+- **MUST** organize services by bounded contexts
+- **MUST** place each service in its own directory
+- **MUST** use proto/ directory for Protocol Buffer definitions
+- **MUST** follow database-per-service pattern
+- **NEVER** share databases between services
+- **MUST** use event streaming for cross-service data sync
+
+### gRPC Communication
+- **MUST** define proto files before implementation
+- **MUST** use async gRPC for all internal communication
+- **MUST** implement proper retry and circuit breaker patterns
+- **MUST** handle all gRPC status codes appropriately
+
+## Security Requirements
+
+- **MUST** store secrets in .env files (NEVER commit)
+- **MUST** use Pydantic validation for all inputs
+- **MUST** sanitize SQL queries with parameterized statements
+- **NEVER** expose internal error details to API clients
+- **NEVER** log sensitive data (credentials, tokens, PII)
+- **MUST** use HTTPS/TLS for all external communication
+- **MUST** implement JWT authentication properly
+- **MUST** use RBAC for authorization
+
+## API Implementation Standards
+
+- **MUST** return consistent error format across all services
+- **MUST** include timestamps in all responses
+- **MUST** use proper HTTP status codes
+- **MUST** implement request validation with Pydantic
+- **NEVER** return raw exception objects to clients
+- **MUST** follow REST conventions for external APIs
+- **MUST** follow gRPC conventions for internal APIs
+
+## Documentation Requirements
+
+- **MUST** add docstrings to all functions and classes
+- **MUST** document all environment variables in .env.example
+- **MUST** update OpenAPI documentation for REST endpoints
+- **MUST** include proto documentation for gRPC services
+- **MUST** include request/response examples
+- **MUST** document service dependencies
+
+## Task Completion Checklist
+
+Before marking any task as complete, verify:
+- [ ] All subtasks completed
+- [ ] `pytest` passes with 80%+ coverage
+- [ ] `mypy` passes with no errors
+- [ ] `ruff` passes with no errors
+- [ ] `black` formatting applied
+- [ ] All environment variables documented
+- [ ] Docstrings added to all public APIs
+- [ ] No `print()` statements (use logging module)
+- [ ] No `Any` types (except where absolutely necessary)
+- [ ] API responses follow standard format
+- [ ] Error handling for all failure cases
+- [ ] gRPC contracts tested
+- [ ] Database migrations created
+- [ ] Docker build succeeds
+- [ ] For complex tasks: Zen MCP code review completed
+
+**Enforcement:** Violating these standards results in immediate task rejection.
+
+## Service Implementation Order
+
+1. **Proto Definition First**: Always define proto files before implementation
+2. **Database Schema**: Create models and migrations before business logic
+3. **Core Services**: Implement service layer before API layer
+4. **API Layer**: REST endpoints after service implementation
+5. **gRPC Layer**: gRPC servicers after REST
+6. **Tests**: Write tests for each layer
+7. **Integration**: Test service integration
+
+## Performance Requirements
+
+- **MUST** use connection pooling for databases
+- **MUST** implement caching with Redis where appropriate
+- **MUST** use async operations throughout
+- **MUST** profile and optimize database queries
+- **NEVER** use synchronous I/O in async contexts
+- **MUST** implement pagination for all list endpoints
+
+## Deployment Readiness
+
+- **MUST** include Dockerfile with multi-stage build
+- **MUST** include health check endpoints
+- **MUST** include Kubernetes manifests
+- **MUST** expose Prometheus metrics
+- **MUST** implement structured logging
+- **MUST** handle graceful shutdown
+
+## Tool Usage Requirements
+
+- **ALWAYS CHECK** @.cursor/rules/python-standards.md for Python patterns
+- **ALWAYS CHECK** @.cursor/rules/grpc-patterns.md for gRPC implementation
+- **ALWAYS CHECK** @.cursor/rules/testing-standards.md for test patterns
+- **MUST** use correct tools for each task (no manual proto compilation)
+
+</critical>

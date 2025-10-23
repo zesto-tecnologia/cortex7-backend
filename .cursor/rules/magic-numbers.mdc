@@ -1,0 +1,490 @@
+---
+alwaysApply: true
+---
+
+# Magic Numbers and Constants Standards - Python Microservices
+
+## What Are Magic Numbers?
+
+Magic numbers are hardcoded numeric literals that appear in code without explanation. They reduce code readability and maintainability.
+
+## Rules
+
+### ❌ NEVER use magic numbers
+
+```python
+# Bad - what does 10000 mean?
+response = await httpx.get(url, timeout=10000)
+
+# Bad - what is 429?
+if response.status_code == 429:
+    # handle rate limit
+    pass
+
+# Bad - what is 30?
+if cache_age > 30:
+    await invalidate_cache()
+```
+
+### ✅ ALWAYS use named constants
+
+```python
+# Good - clear meaning
+DEFAULT_TIMEOUT_MS = 10000
+response = await httpx.get(url, timeout=DEFAULT_TIMEOUT_MS)
+
+# Good - standard HTTP code
+from fastapi import status
+if response.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+    # handle rate limit
+    pass
+
+# Good - business rule
+CACHE_MAX_AGE_SECONDS = 30
+if cache_age > CACHE_MAX_AGE_SECONDS:
+    await invalidate_cache()
+```
+
+## Naming Conventions
+
+### Constants in Python
+
+```python
+# UPPER_SNAKE_CASE for module-level constants
+MAX_RETRIES = 3
+DEFAULT_TIMEOUT_MS = 10000
+API_VERSION = 1
+
+# Class constants
+class UserService:
+    MAX_LOGIN_ATTEMPTS = 5
+    SESSION_TIMEOUT_SECONDS = 3600
+    DEFAULT_PAGE_SIZE = 20
+```
+
+### Configuration Constants with Pydantic
+
+```python
+from pydantic import BaseSettings
+from typing import Final
+
+# Using Pydantic Settings
+class CacheSettings(BaseSettings):
+    TTL_USER_LIST: Final[int] = 30000      # 30 seconds
+    TTL_USER_STATUS: Final[int] = 5000     # 5 seconds
+    TTL_USER_DETAILS: Final[int] = 60000   # 60 seconds
+    TTL_USER_SESSIONS: Final[int] = 10000  # 10 seconds
+    MAX_SIZE: Final[int] = 1000            # Max cache entries
+
+    class Config:
+        env_prefix = "CACHE_"
+
+class RetrySettings(BaseSettings):
+    MAX_ATTEMPTS: Final[int] = 3
+    INITIAL_DELAY_MS: Final[int] = 1000
+    BACKOFF_MULTIPLIER: Final[float] = 2.0
+
+    class Config:
+        env_prefix = "RETRY_"
+
+# HTTP Status codes - use FastAPI's status module
+from fastapi import status
+# status.HTTP_200_OK, status.HTTP_404_NOT_FOUND, etc.
+```
+
+### Service-Specific Constants
+
+```python
+# user_service/constants.py
+from enum import IntEnum, StrEnum
+from typing import Final
+
+class UserRole(StrEnum):
+    ADMIN = "admin"
+    USER = "user"
+    SERVICE = "service"
+    GUEST = "guest"
+
+class UserStatus(StrEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+    DELETED = "deleted"
+
+# Database constants
+class DatabaseLimits:
+    MAX_USERNAME_LENGTH: Final[int] = 255
+    MAX_EMAIL_LENGTH: Final[int] = 320
+    MAX_PASSWORD_LENGTH: Final[int] = 128
+    MIN_PASSWORD_LENGTH: Final[int] = 8
+    BCRYPT_ROUNDS: Final[int] = 12
+
+# Pagination
+class PaginationDefaults:
+    DEFAULT_LIMIT: Final[int] = 20
+    MAX_LIMIT: Final[int] = 100
+    MIN_LIMIT: Final[int] = 1
+    DEFAULT_OFFSET: Final[int] = 0
+```
+
+## gRPC-Specific Constants
+
+```python
+# grpc_constants.py
+from typing import Final
+import grpc
+
+class GRPCConfig:
+    MAX_MESSAGE_LENGTH: Final[int] = 4 * 1024 * 1024  # 4MB
+    KEEPALIVE_TIME_MS: Final[int] = 10000
+    KEEPALIVE_TIMEOUT_MS: Final[int] = 5000
+    MAX_CONNECTION_IDLE_MS: Final[int] = 300000  # 5 minutes
+    MAX_CONNECTION_AGE_MS: Final[int] = 3600000   # 1 hour
+
+    # gRPC options
+    OPTIONS: Final[list] = [
+        ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
+        ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+        ('grpc.keepalive_time_ms', KEEPALIVE_TIME_MS),
+        ('grpc.keepalive_timeout_ms', KEEPALIVE_TIMEOUT_MS),
+    ]
+
+# Status codes - use grpc.StatusCode enum
+# grpc.StatusCode.OK, grpc.StatusCode.NOT_FOUND, etc.
+```
+
+## Environment-Based Configuration
+
+```python
+# config.py
+from pydantic import BaseSettings
+from typing import Final
+import os
+
+class Settings(BaseSettings):
+    # Service configuration
+    SERVICE_NAME: str
+    SERVICE_VERSION: str = "1.0.0"
+    ENVIRONMENT: str = "development"
+
+    # Server configuration
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    GRPC_PORT: int = 50051
+
+    # Database configuration
+    DATABASE_URL: str
+    DATABASE_POOL_SIZE: int = 20
+    DATABASE_MAX_OVERFLOW: int = 0
+    DATABASE_POOL_TIMEOUT: int = 30
+
+    # Redis configuration
+    REDIS_URL: str
+    REDIS_POOL_SIZE: int = 10
+
+    # Security
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Rate limiting
+    RATE_LIMIT_PER_MINUTE: int = 100
+    RATE_LIMIT_PER_HOUR: int = 1000
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+settings = Settings()
+```
+
+## Time and Duration Constants
+
+```python
+# time_constants.py
+from typing import Final
+from datetime import timedelta
+
+class TimeConstants:
+    # Base units in seconds
+    SECOND: Final[int] = 1
+    MINUTE: Final[int] = 60
+    HOUR: Final[int] = 3600
+    DAY: Final[int] = 86400
+    WEEK: Final[int] = 604800
+
+    # Milliseconds
+    SECOND_MS: Final[int] = 1000
+    MINUTE_MS: Final[int] = 60000
+    HOUR_MS: Final[int] = 3600000
+    DAY_MS: Final[int] = 86400000
+
+# Using timedelta for durations
+class ServiceDurations:
+    HEALTH_CHECK_INTERVAL = timedelta(seconds=30)
+    CACHE_TTL = timedelta(minutes=5)
+    SESSION_TIMEOUT = timedelta(hours=24)
+    TOKEN_EXPIRY = timedelta(days=7)
+    REQUEST_TIMEOUT = timedelta(seconds=10)
+```
+
+## Database Constants
+
+```python
+# models/constants.py
+from typing import Final
+from sqlalchemy import String
+from sqlalchemy.dialects.postgresql import UUID
+
+class ColumnTypes:
+    # String column lengths
+    SHORT_STRING: Final[int] = 50
+    MEDIUM_STRING: Final[int] = 255
+    LONG_STRING: Final[int] = 1000
+    TEXT_FIELD: Final[int] = 5000
+
+    # Decimal precision
+    PRICE_PRECISION: Final[tuple] = (10, 2)
+    PERCENTAGE_PRECISION: Final[tuple] = (5, 2)
+
+class QueryLimits:
+    BATCH_SIZE: Final[int] = 1000
+    MAX_IN_CLAUSE_SIZE: Final[int] = 500
+    CONNECTION_POOL_SIZE: Final[int] = 20
+    CONNECTION_TIMEOUT: Final[int] = 30
+```
+
+## Cache Configuration
+
+```python
+# cache/constants.py
+from typing import Final
+from enum import IntEnum
+
+class CacheTTL(IntEnum):
+    """Cache TTL in seconds"""
+    USER_PROFILE = 300        # 5 minutes
+    USER_LIST = 60           # 1 minute
+    USER_PERMISSIONS = 600   # 10 minutes
+    SERVICE_CONFIG = 3600    # 1 hour
+    STATIC_CONTENT = 86400   # 24 hours
+
+class CacheKeys:
+    """Cache key prefixes"""
+    USER: Final[str] = "user:{user_id}"
+    USER_LIST: Final[str] = "users:list:{page}:{limit}"
+    USER_PERMISSIONS: Final[str] = "user:{user_id}:permissions"
+    SERVICE_CONFIG: Final[str] = "config:{service_name}"
+```
+
+## Error Codes
+
+```python
+# exceptions/error_codes.py
+from enum import StrEnum
+from typing import Final
+
+class ErrorCode(StrEnum):
+    # Authentication errors (1000-1099)
+    AUTH_FAILED = "E1001"
+    TOKEN_EXPIRED = "E1002"
+    INVALID_CREDENTIALS = "E1003"
+    UNAUTHORIZED = "E1004"
+
+    # Validation errors (1100-1199)
+    VALIDATION_ERROR = "E1100"
+    INVALID_FORMAT = "E1101"
+    MISSING_FIELD = "E1102"
+    FIELD_TOO_LONG = "E1103"
+
+    # Resource errors (1200-1299)
+    NOT_FOUND = "E1200"
+    ALREADY_EXISTS = "E1201"
+    CONFLICT = "E1202"
+    RESOURCE_EXHAUSTED = "E1203"
+
+    # System errors (1300-1399)
+    INTERNAL_ERROR = "E1300"
+    SERVICE_UNAVAILABLE = "E1301"
+    TIMEOUT = "E1302"
+    CIRCUIT_BREAKER_OPEN = "E1303"
+
+# Error messages
+ERROR_MESSAGES: Final[dict] = {
+    ErrorCode.AUTH_FAILED: "Authentication failed",
+    ErrorCode.TOKEN_EXPIRED: "Token has expired",
+    ErrorCode.NOT_FOUND: "Resource not found",
+    ErrorCode.INTERNAL_ERROR: "Internal server error",
+}
+```
+
+## Kafka/Event Streaming Constants
+
+```python
+# events/constants.py
+from typing import Final
+
+class KafkaConfig:
+    BOOTSTRAP_SERVERS: Final[str] = "localhost:9092"
+    MAX_BATCH_SIZE: Final[int] = 16384
+    LINGER_MS: Final[int] = 10
+    BUFFER_MEMORY: Final[int] = 33554432  # 32MB
+    MAX_REQUEST_SIZE: Final[int] = 1048576  # 1MB
+
+class EventTopics:
+    USER_CREATED: Final[str] = "users.created"
+    USER_UPDATED: Final[str] = "users.updated"
+    USER_DELETED: Final[str] = "users.deleted"
+    ORDER_PLACED: Final[str] = "orders.placed"
+    PAYMENT_PROCESSED: Final[str] = "payments.processed"
+```
+
+## Prometheus Metrics Constants
+
+```python
+# metrics/constants.py
+from typing import Final
+
+class MetricNames:
+    # HTTP metrics
+    HTTP_REQUESTS_TOTAL: Final[str] = "http_requests_total"
+    HTTP_REQUEST_DURATION: Final[str] = "http_request_duration_seconds"
+    HTTP_REQUEST_SIZE: Final[str] = "http_request_size_bytes"
+
+    # gRPC metrics
+    GRPC_REQUESTS_TOTAL: Final[str] = "grpc_requests_total"
+    GRPC_REQUEST_DURATION: Final[str] = "grpc_request_duration_seconds"
+
+    # Database metrics
+    DB_QUERY_DURATION: Final[str] = "db_query_duration_seconds"
+    DB_CONNECTION_POOL_SIZE: Final[str] = "db_connection_pool_size"
+
+    # Cache metrics
+    CACHE_HITS: Final[str] = "cache_hits_total"
+    CACHE_MISSES: Final[str] = "cache_misses_total"
+
+class MetricBuckets:
+    DURATION_BUCKETS: Final[tuple] = (
+        0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0
+    )
+```
+
+## Testing Constants
+
+```python
+# tests/constants.py
+from typing import Final
+import uuid
+
+class TestConstants:
+    # Test database
+    TEST_DATABASE_URL: Final[str] = "postgresql+asyncpg://test:test@localhost/test_db"
+
+    # Test Redis
+    TEST_REDIS_URL: Final[str] = "redis://localhost:6379/1"
+
+    # Test timeouts
+    ASYNC_TEST_TIMEOUT: Final[int] = 5  # seconds
+    INTEGRATION_TEST_TIMEOUT: Final[int] = 30  # seconds
+
+    # Test data
+    TEST_USER_ID: Final[str] = str(uuid.UUID("12345678-1234-5678-1234-567812345678"))
+    TEST_EMAIL: Final[str] = "test@example.com"
+    TEST_PASSWORD: Final[str] = "Test123!@#"
+```
+
+## File Organization
+
+```python
+# Service structure with constants
+service-name/
+├── src/
+│   ├── constants/
+│   │   ├── __init__.py
+│   │   ├── api.py         # API-related constants
+│   │   ├── database.py    # Database constants
+│   │   ├── cache.py       # Cache constants
+│   │   ├── grpc.py        # gRPC constants
+│   │   ├── errors.py      # Error codes
+│   │   └── time.py        # Time constants
+│   ├── config/
+│   │   ├── __init__.py
+│   │   └── settings.py    # Pydantic Settings
+```
+
+## Documentation
+
+### Document Complex Constants
+
+```python
+# Battery thresholds based on operational requirements
+class BatteryThresholds:
+    """
+    Battery level thresholds for robot operations.
+
+    Based on operational data:
+    - Robots can operate safely down to 20%
+    - Below 5% risks sudden shutdown
+    """
+    LOW: Final[int] = 20         # Triggers charging recommendation
+    CRITICAL: Final[int] = 5     # Triggers immediate return to dock
+
+# Retry configuration based on exponential backoff
+class RetryConfig:
+    """
+    Exponential backoff retry configuration.
+
+    Timing:
+    - Attempt 1: 1s delay
+    - Attempt 2: 2s delay (1s * 2)
+    - Attempt 3: 4s delay (2s * 2)
+    """
+    MAX_ATTEMPTS: Final[int] = 3
+    INITIAL_DELAY_MS: Final[int] = 1000
+    BACKOFF_MULTIPLIER: Final[float] = 2.0
+```
+
+## Anti-Patterns
+
+### ❌ DON'T
+
+```python
+# Don't use magic numbers
+if response.status_code == 404:
+    pass
+
+# Don't use unexplained timeouts
+await asyncio.sleep(5)
+
+# Don't use arbitrary limits
+if len(items) > 50:
+    pass
+
+# Don't use magic percentages
+if success_rate > 0.85:
+    pass
+```
+
+### ✅ DO
+
+```python
+# Use named constants
+from fastapi import status
+if response.status_code == status.HTTP_404_NOT_FOUND:
+    pass
+
+# Use documented timeouts
+CACHE_PROPAGATION_DELAY = 5  # seconds
+await asyncio.sleep(CACHE_PROPAGATION_DELAY)
+
+# Use business rule constants
+MAX_ITEMS_PER_REQUEST = 50  # API limit from PRD
+if len(items) > MAX_ITEMS_PER_REQUEST:
+    pass
+
+# Use meaningful thresholds
+SUCCESS_RATE_THRESHOLD = 0.85  # 85% SLA requirement
+if success_rate > SUCCESS_RATE_THRESHOLD:
+    pass
+```

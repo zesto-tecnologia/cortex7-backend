@@ -1,0 +1,367 @@
+# Python Development Standards
+
+## Python Version and Environment
+
+### Requirements
+- Python 3.11+ (minimum)
+- UV package manager for dependency management
+- Virtual environments for isolation
+
+### Project Configuration
+```toml
+# pyproject.toml
+[project]
+name = "service-name"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.104.0",
+    "pydantic>=2.5.0",
+    "sqlalchemy>=2.0.0",
+    "grpcio>=1.60.0",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+]
+```
+
+## Coding Standards
+
+### Style Guide
+- Follow PEP 8 with Black formatting
+- Maximum line length: 88 characters
+- Use type hints everywhere
+- Docstrings for all public functions
+
+### Naming Conventions
+```python
+# Classes: PascalCase
+class UserService:
+    pass
+
+# Functions/Methods: snake_case
+async def get_user_by_id(user_id: UUID) -> User:
+    pass
+
+# Constants: UPPER_SNAKE_CASE
+MAX_RETRY_ATTEMPTS = 3
+
+# Private: Leading underscore
+def _internal_helper():
+    pass
+```
+
+## Async/Await Patterns
+
+### Always Async for I/O
+```python
+# ✅ CORRECT
+async def get_data():
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        return response.json()
+
+# ❌ WRONG
+def get_data():
+    response = requests.get(url)  # Blocking!
+    return response.json()
+```
+
+### Concurrent Operations
+```python
+# Parallel execution
+import asyncio
+
+results = await asyncio.gather(
+    fetch_user(user_id),
+    fetch_orders(user_id),
+    fetch_preferences(user_id)
+)
+```
+
+### Context Managers
+```python
+# Async context managers for resources
+class DatabaseConnection:
+    async def __aenter__(self):
+        self.conn = await create_connection()
+        return self.conn
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.conn.close()
+```
+
+## Type Hints
+
+### Complete Type Annotations
+```python
+from typing import Optional, List, Dict, Union
+from uuid import UUID
+
+async def process_items(
+    items: List[Dict[str, Any]],
+    user_id: UUID,
+    options: Optional[ProcessOptions] = None
+) -> ProcessResult:
+    """Process items with optional configuration."""
+    pass
+```
+
+### Pydantic Models
+```python
+from pydantic import BaseModel, Field, validator
+from datetime import datetime
+
+class UserCreate(BaseModel):
+    email: str = Field(..., regex=r'^[\w\.-]+@[\w\.-]+\.\w+$')
+    name: str = Field(..., min_length=1, max_length=100)
+    age: int = Field(..., ge=0, le=150)
+
+    @validator('email')
+    def email_lowercase(cls, v):
+        return v.lower()
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@example.com",
+                "name": "John Doe",
+                "age": 30
+            }
+        }
+```
+
+## Error Handling
+
+### Custom Exceptions
+```python
+class ServiceError(Exception):
+    """Base service exception."""
+    pass
+
+class NotFoundError(ServiceError):
+    """Resource not found."""
+    pass
+
+class ValidationError(ServiceError):
+    """Validation failed."""
+    pass
+```
+
+### Exception Handling
+```python
+from fastapi import HTTPException
+
+async def get_user(user_id: UUID):
+    try:
+        user = await user_service.get(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+    except ServiceError as e:
+        logger.error("Service error", error=str(e), user_id=str(user_id))
+        raise HTTPException(status_code=500, detail="Internal server error")
+```
+
+## Testing Standards
+
+### Test Structure
+```python
+import pytest
+from unittest.mock import AsyncMock
+
+class TestUserService:
+    """Test user service functionality."""
+
+    @pytest.fixture
+    async def service(self):
+        """Create service instance with mocked dependencies."""
+        repository = AsyncMock()
+        return UserService(repository)
+
+    @pytest.mark.asyncio
+    async def test_create_user(self, service):
+        """Test user creation."""
+        # Arrange
+        user_data = UserCreate(email="test@example.com", name="Test")
+
+        # Act
+        result = await service.create_user(user_data)
+
+        # Assert
+        assert result.email == "test@example.com"
+        service.repository.create.assert_called_once()
+```
+
+### Test Coverage Requirements
+- Minimum 80% code coverage
+- 100% coverage for critical paths
+- Integration tests for all APIs
+- Contract tests for gRPC services
+
+## Documentation
+
+### Docstring Format
+```python
+async def process_order(
+    order_id: UUID,
+    user_id: UUID,
+    options: Optional[ProcessOptions] = None
+) -> OrderResult:
+    """
+    Process an order for a user.
+
+    Args:
+        order_id: The unique order identifier
+        user_id: The user placing the order
+        options: Optional processing configuration
+
+    Returns:
+        OrderResult: The processed order details
+
+    Raises:
+        NotFoundError: If order or user not found
+        ValidationError: If order validation fails
+    """
+    pass
+```
+
+### API Documentation
+```python
+@router.post(
+    "/users",
+    response_model=UserResponse,
+    status_code=201,
+    summary="Create a new user",
+    description="Create a new user with the provided details",
+    responses={
+        201: {"description": "User created successfully"},
+        400: {"description": "Invalid input data"},
+        409: {"description": "User already exists"}
+    }
+)
+async def create_user(user: UserCreate) -> UserResponse:
+    """Create a new user endpoint."""
+    pass
+```
+
+## Security Best Practices
+
+### Input Validation
+```python
+# Always validate input with Pydantic
+class UserInput(BaseModel):
+    email: EmailStr
+    password: SecretStr = Field(..., min_length=8)
+
+    @validator('password')
+    def validate_password(cls, v):
+        if not any(c.isupper() for c in v.get_secret_value()):
+            raise ValueError('Password must contain uppercase letter')
+        return v
+```
+
+### SQL Injection Prevention
+```python
+# Use parameterized queries
+from sqlalchemy import select
+
+async def get_user_by_email(email: str):
+    # Safe parameterized query
+    stmt = select(User).where(User.email == email)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+```
+
+### Secret Management
+```python
+from pydantic import BaseSettings
+
+class Settings(BaseSettings):
+    database_url: str
+    redis_url: str
+    jwt_secret: str
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+```
+
+## Performance Optimization
+
+### Database Queries
+```python
+# Use select loading for relationships
+from sqlalchemy.orm import selectinload
+
+stmt = select(User).options(
+    selectinload(User.orders)
+).where(User.id == user_id)
+```
+
+### Caching
+```python
+from functools import lru_cache
+from typing import Optional
+
+@lru_cache(maxsize=128)
+async def get_cached_config(key: str) -> Optional[str]:
+    """Cache configuration values."""
+    return await redis.get(key)
+```
+
+### Connection Pooling
+```python
+# Configure connection pools
+from sqlalchemy.ext.asyncio import create_async_engine
+
+engine = create_async_engine(
+    DATABASE_URL,
+    pool_size=20,
+    max_overflow=0,
+    pool_timeout=30,
+    pool_recycle=1800,
+)
+```
+
+## Code Quality Tools
+
+### Linting and Formatting
+```bash
+# Ruff for linting
+ruff check src/ --fix
+
+# Black for formatting
+black src/ tests/
+
+# isort for imports
+isort src/ tests/
+```
+
+### Type Checking
+```bash
+# MyPy for type checking
+mypy src/ --strict --python-version 3.11
+```
+
+### Pre-commit Hooks
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.0
+    hooks:
+      - id: ruff
+  - repo: https://github.com/psf/black
+    rev: 23.0.0
+    hooks:
+      - id: black
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.0
+    hooks:
+      - id: mypy
+```
