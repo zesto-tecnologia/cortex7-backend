@@ -56,6 +56,18 @@ class Settings(BaseSettings):
     def redis_url(self) -> str:
         """Construct Redis URL."""
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
+    
+    @computed_field
+    @property
+    def celery_broker_url(self) -> str:
+        """Construct Celery broker URL (uses Redis)."""
+        return f"redis://{self.redis_host}:{self.redis_port}/0"
+    
+    @computed_field
+    @property
+    def celery_backend_url(self) -> str:
+        """Construct Celery backend URL (uses Redis)."""
+        return f"redis://{self.redis_host}:{self.redis_port}/0"
 
     # Security
     secret_key: str = Field(default="change-this-in-production")

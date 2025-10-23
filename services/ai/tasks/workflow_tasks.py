@@ -65,15 +65,20 @@ def execute_general_workflow(self, workflow_id: str, empresa_id: str, task_descr
         # Create and execute crew
         crew = create_general_task_crew(llm, empresa_id, task_description)
         result = crew.kickoff()
-        
+
+        # Append flow diagram to the result
+        flow_diagram = getattr(crew, '_flow_diagram', '')
+        print(flow_diagram)
+        final_result = str(result) + "\n" + flow_diagram
+
         # Update status to completed
         asyncio.run(update_workflow_status(
             workflow_id,
             "completed",
-            result={"output": str(result)}
+            result={"output": final_result}
         ))
-        
-        return {"status": "completed", "result": str(result)}
+
+        return {"status": "completed", "result": final_result}
         
     except Exception as e:
         logger.error(f"Error executing general workflow: {e}", exc_info=True)

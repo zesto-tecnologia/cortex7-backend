@@ -4,7 +4,7 @@ API Gateway for the Cortex microservices architecture.
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 import httpx
 import logging
 from typing import Any, Dict
@@ -38,6 +38,7 @@ SERVICE_ROUTES = {
     "/legal": settings.legal_service_url,
     "/procurement": settings.procurement_service_url,
     "/documents": settings.documents_service_url,
+    "/ai": settings.ai_service_url,
 }
 
 
@@ -118,23 +119,51 @@ async def gateway_proxy(request: Request, path: str):
         body = await request.body()
 
     try:
-        # Make the request to the target service
-        async with httpx.AsyncClient() as client:
-            response = await client.request(
-                method=request.method,
-                url=target_url,
-                params=query_params,
-                headers=headers,
-                content=body,
-                timeout=30.0,
-            )
+        # Check if this is a streaming endpoint
+        is_streaming = "/stream" in path
 
-        # Return the response
-        return JSONResponse(
-            content=response.json() if response.content else None,
-            status_code=response.status_code,
-            headers=dict(response.headers),
-        )
+        if is_streaming:
+            # For streaming endpoints, use StreamingResponse
+            async def stream_proxy():
+                async with httpx.AsyncClient(follow_redirects=True) as client:
+                    async with client.stream(
+                        method=request.method,
+                        url=target_url,
+                        params=query_params,
+                        headers=headers,
+                        content=body,
+                        timeout=60.0,  # Longer timeout for streaming
+                    ) as response:
+                        async for chunk in response.aiter_bytes():
+                            yield chunk
+
+            return StreamingResponse(
+                stream_proxy(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",  # Disable buffering in nginx if present
+                }
+            )
+        else:
+            # For regular endpoints, use JSONResponse
+            async with httpx.AsyncClient(follow_redirects=True) as client:
+                response = await client.request(
+                    method=request.method,
+                    url=target_url,
+                    params=query_params,
+                    headers=headers,
+                    content=body,
+                    timeout=30.0,
+                )
+
+            # Return the response
+            return JSONResponse(
+                content=response.json() if response.content else None,
+                status_code=response.status_code,
+                headers=dict(response.headers),
+            )
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Service timeout")
     except httpx.RequestError as e:

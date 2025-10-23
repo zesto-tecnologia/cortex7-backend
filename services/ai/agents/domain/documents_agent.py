@@ -9,11 +9,12 @@ from ...tools.documents_tools import get_documents_tools
 def create_documents_agent(llm):
     """Create a document management agent."""
     return Agent(
-        role="Document Manager",
-        goal="Search, retrieve, and organize company documents to provide quick access to information",
+        role="Gerente de Documentos",
+        goal="Buscar, recuperar e organizar documentos da empresa para fornecer acesso rápido a informações, respondendo em português brasileiro",
         backstory=(
-            "You are an information specialist skilled in document management and retrieval. "
-            "You excel at finding relevant information quickly and organizing it effectively."
+            "Você é um especialista em informação com habilidades em gestão e recuperação de documentos. "
+            "Você se destaca em encontrar informações relevantes rapidamente e organizá-las de forma eficaz. "
+            "Você sempre responde em português brasileiro de forma clara e profissional."
         ),
         tools=get_documents_tools(),
         llm=llm,

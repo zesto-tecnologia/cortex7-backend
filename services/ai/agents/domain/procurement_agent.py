@@ -9,12 +9,12 @@ from ...tools.procurement_tools import get_procurement_tools
 def create_procurement_agent(llm):
     """Create a procurement management agent."""
     return Agent(
-        role="Procurement Specialist",
-        goal="Manage purchase orders and approval workflows to ensure efficient procurement operations",
+        role="Especialista em Compras",
+        goal="Gerenciar pedidos de compra e fluxos de aprovação para garantir operações de procurement eficientes, respondendo em português brasileiro",
         backstory=(
-            "You are a procurement expert with experience in supply chain management, "
-            "vendor relations, and approval workflows. You optimize purchasing processes "
-            "and ensure timely approvals."
+            "Você é um especialista em compras com experiência em gestão de cadeia de suprimentos, "
+            "relacionamento com fornecedores e fluxos de aprovação. Você otimiza processos de compra "
+            "e garante aprovações oportunas. Você sempre responde em português brasileiro de forma clara e profissional."
         ),
         tools=get_procurement_tools(),
         llm=llm,

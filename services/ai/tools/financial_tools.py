@@ -1,10 +1,8 @@
 """
-LangChain tools for Financial service integration.
+CrewAI-compatible tools for Financial service integration.
 """
 
-from langchain_core.tools import BaseTool
-from typing import Optional, Type, Any
-from pydantic import BaseModel, Field
+from crewai.tools import BaseTool
 import httpx
 import logging
 
@@ -13,47 +11,33 @@ logger = logging.getLogger(__name__)
 FINANCIAL_SERVICE_URL = "http://financial-service:8002"
 
 
-class GetContasPagarInput(BaseModel):
-    """Input for GetContasPagarTool."""
-    empresa_id: str = Field(..., description="Company UUID")
-    status: Optional[str] = Field(None, description="Filter by status: pendente, aprovado, pago, cancelado")
-
-
 class GetContasPagarTool(BaseTool):
-    name: str = "get_contas_pagar"
-    description: str = "Get accounts payable (contas a pagar) for a company. Use this when you need to check bills, payments due, or payables information."
-    args_schema: Type[BaseModel] = GetContasPagarInput
+    name: str = "Get Contas Pagar"
+    description: str = "Get accounts payable (contas a pagar) for a company. Use this when you need to check bills, payments due, or payables information. Input: empresa_id (required UUID string)"
     
-    def _run(self, empresa_id: str, status: Optional[str] = None) -> dict:
+    def _run(self, empresa_id: str) -> str:
         """Execute the tool."""
         try:
-            params = {"empresa_id": empresa_id, "limit": 100}
-            if status:
-                params["status"] = status
-                
             response = httpx.get(
                 f"{FINANCIAL_SERVICE_URL}/contas-pagar/",
-                params=params,
+                params={"empresa_id": empresa_id, "limit": 100},
                 timeout=10.0
             )
             response.raise_for_status()
-            return {"success": True, "data": response.json()}
+            data = response.json()
+            if not data:
+                return f"No accounts payable found for company {empresa_id}"
+            return f"Successfully retrieved {len(data)} accounts payable. Data: {data}"
         except Exception as e:
             logger.error(f"Error calling financial service: {e}")
-            return {"success": False, "error": str(e)}
-
-
-class GetFornecedoresInput(BaseModel):
-    """Input for GetFornecedoresTool."""
-    empresa_id: str = Field(..., description="Company UUID")
+            return f"Error retrieving accounts payable: {str(e)}"
 
 
 class GetFornecedoresTool(BaseTool):
-    name: str = "get_fornecedores"
-    description: str = "Get suppliers (fornecedores) for a company. Use this to get supplier information, contacts, and details."
-    args_schema: Type[BaseModel] = GetFornecedoresInput
+    name: str = "Get Fornecedores"
+    description: str = "Get suppliers (fornecedores) for a company. Use this to get supplier information, contacts, and details. Input: empresa_id (required UUID string)"
     
-    def _run(self, empresa_id: str) -> dict:
+    def _run(self, empresa_id: str) -> str:
         """Execute the tool."""
         try:
             response = httpx.get(
@@ -62,23 +46,20 @@ class GetFornecedoresTool(BaseTool):
                 timeout=10.0
             )
             response.raise_for_status()
-            return {"success": True, "data": response.json()}
+            data = response.json()
+            if not data:
+                return f"No suppliers found for company {empresa_id}"
+            return f"Successfully retrieved {len(data)} supplier(s). Data: {data}"
         except Exception as e:
             logger.error(f"Error calling financial service: {e}")
-            return {"success": False, "error": str(e)}
-
-
-class GetCentrosCustoInput(BaseModel):
-    """Input for GetCentrosCustoTool."""
-    empresa_id: str = Field(..., description="Company UUID")
+            return f"Error retrieving suppliers: {str(e)}"
 
 
 class GetCentrosCustoTool(BaseTool):
-    name: str = "get_centros_custo"
-    description: str = "Get cost centers (centros de custo) for a company. Use this to check budgets, departmental spending, and cost allocation."
-    args_schema: Type[BaseModel] = GetCentrosCustoInput
+    name: str = "Get Centros Custo"
+    description: str = "Get cost centers (centros de custo) for a company. Use this to check budgets, departmental spending, and cost allocation. Input: empresa_id (required UUID string)"
     
-    def _run(self, empresa_id: str) -> dict:
+    def _run(self, empresa_id: str) -> str:
         """Execute the tool."""
         try:
             response = httpx.get(
@@ -87,10 +68,13 @@ class GetCentrosCustoTool(BaseTool):
                 timeout=10.0
             )
             response.raise_for_status()
-            return {"success": True, "data": response.json()}
+            data = response.json()
+            if not data:
+                return f"No cost centers found for company {empresa_id}"
+            return f"Successfully retrieved cost centers. Data: {data}"
         except Exception as e:
             logger.error(f"Error calling financial service: {e}")
-            return {"success": False, "error": str(e)}
+            return f"Error retrieving cost centers: {str(e)}"
 
 
 def get_financial_tools():
@@ -100,4 +84,3 @@ def get_financial_tools():
         GetFornecedoresTool(),
         GetCentrosCustoTool(),
     ]
-

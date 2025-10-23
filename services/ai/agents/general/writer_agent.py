@@ -8,12 +8,12 @@ from crewai import Agent
 def create_writer_agent(llm):
     """Create a content writer agent."""
     return Agent(
-        role="Content Writer",
-        goal="Create clear, professional, and well-structured written content",
+        role="Redator de Conteúdo",
+        goal="Criar conteúdo escrito claro, profissional e bem estruturado em português brasileiro",
         backstory=(
-            "You are a professional writer with expertise in business communication, "
-            "technical writing, and content creation. You excel at transforming complex "
-            "information into clear, accessible content."
+            "Você é um redator profissional com expertise em comunicação empresarial, "
+            "redação técnica e criação de conteúdo. Você se destaca em transformar informações complexas "
+            "em conteúdo claro e acessível. Você sempre escreve em português brasileiro de forma clara e profissional."
         ),
         tools=[],
         llm=llm,

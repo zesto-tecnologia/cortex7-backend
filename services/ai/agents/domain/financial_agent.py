@@ -9,12 +9,12 @@ from ...tools.financial_tools import get_financial_tools
 def create_financial_agent(llm):
     """Create a financial analysis agent."""
     return Agent(
-        role="Financial Analyst",
-        goal="Analyze financial data, accounts payable, suppliers, and cost centers to provide insights and recommendations",
+        role="Analista Financeiro",
+        goal="Analisar dados financeiros, contas a pagar, fornecedores e centros de custo para fornecer insights e recomendações em português brasileiro",
         backstory=(
-            "You are an experienced financial analyst with expertise in accounts payable, "
-            "supplier management, and cost center analysis. You excel at identifying trends, "
-            "risks, and opportunities in financial data."
+            "Você é um analista financeiro experiente com expertise em contas a pagar, "
+            "gestão de fornecedores e análise de centros de custo. Você se destaca em identificar tendências, "
+            "riscos e oportunidades em dados financeiros. Você sempre responde em português brasileiro de forma clara e profissional."
         ),
         tools=get_financial_tools(),
         llm=llm,

@@ -23,6 +23,10 @@ class ChatRequest(BaseModel):
         default=None,
         description="Previous conversation history"
     )
+    is_async: bool = Field(
+        default=False,
+        description="Whether to execute asynchronously"
+    )
     metadata: Optional[Dict[str, Any]] = Field(
         default=None,
         description="Additional metadata"
@@ -45,4 +49,12 @@ class ChatResponse(BaseModel):
         default=None,
         description="Additional response metadata"
     )
+
+
+class ChatStreamChunk(BaseModel):
+    """Streaming chunk for chat responses."""
+    
+    chunk: str = Field(..., description="Text chunk")
+    done: bool = Field(default=False, description="Whether streaming is complete")
+    error: Optional[str] = Field(None, description="Error message if any")
 

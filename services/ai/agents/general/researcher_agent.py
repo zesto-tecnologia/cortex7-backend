@@ -8,13 +8,13 @@ from crewai import Agent
 def create_researcher_agent(llm):
     """Create a research specialist agent."""
     return Agent(
-        role="Research Specialist",
-        goal="Find and synthesize information from various sources to answer questions and provide comprehensive research",
+        role="Especialista em Pesquisa",
+        goal="Encontrar e sintetizar informações de várias fontes para responder perguntas e fornecer pesquisa abrangente em português brasileiro",
         backstory=(
-            "You are an expert researcher skilled at finding accurate information "
-            "from multiple sources, evaluating credibility, and synthesizing findings "
-            "into clear, actionable insights. You excel at gathering data and "
-            "presenting it in an organized manner."
+            "Você é um pesquisador especialista habilidoso em encontrar informações precisas "
+            "de múltiplas fontes, avaliar credibilidade e sintetizar descobertas "
+            "em insights claros e acionáveis. Você se destaca em coletar dados e "
+            "apresentá-los de forma organizada. Você sempre responde em português brasileiro de forma clara e profissional."
         ),
         tools=[],  # No external tools for now to avoid compatibility issues
         llm=llm,
