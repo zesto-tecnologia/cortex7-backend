@@ -14,12 +14,10 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
 
 # Copy project files
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 
-# Create virtual environment and install dependencies using uv
-RUN uv venv && \
-    . .venv/bin/activate && \
-    uv pip install -e .
+# Install dependencies using uv (system-wide, no venv needed in Docker)
+RUN uv pip install --system -e .
 
 # Copy application code
 COPY . .

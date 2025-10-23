@@ -239,6 +239,21 @@ pre-commit: format lint-fix test ## Run pre-commit checks
 # Utilities
 # =============================================================================
 
+clean-cache: ## Clean Python cache files only (keep Docker running)
+	@echo "$(BLUE)Cleaning Python cache files...$(NC)"
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@find . -type f -name "*.pyo" -delete 2>/dev/null || true
+	@find . -type f -name ".coverage" -delete 2>/dev/null || true
+	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	@rm -rf htmlcov 2>/dev/null || true
+	@rm -rf .coverage.* 2>/dev/null || true
+	@rm -rf dist build 2>/dev/null || true
+	@echo "$(GREEN)✅ Cache cleanup complete$(NC)"
+
 clean: ## Clean up containers, volumes, and cache
 	docker-compose down -v 2>/dev/null || true
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

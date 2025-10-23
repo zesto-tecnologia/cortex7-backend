@@ -227,13 +227,19 @@ k8s/
 tasks/
 
 # ===========================
-# Type checking
+# Type checking & Linting
 # ===========================
 .mypy_cache/
 .dmypy.json
 dmypy.json
 .pyre/
 .pytype/
+
+# Ruff linter cache
+.ruff_cache/
+
+# Black formatter cache
+.black/
 
 # ===========================
 # Debug
