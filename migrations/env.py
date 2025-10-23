@@ -1,5 +1,6 @@
 """
-Alembic environment configuration.
+Unified Alembic environment configuration for Cortex-7 backend.
+Combines auth and corporate migrations into single migration path.
 """
 
 from logging.config import fileConfig
