@@ -3,10 +3,12 @@ AI microservice main application.
 Handles AI-powered analysis, chat, and intelligent automation.
 """
 
+import os
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from shared.config.settings import settings
-import uvicorn
 
 # Create FastAPI app
 app = FastAPI(
@@ -56,5 +58,5 @@ app.include_router(chat.router, prefix="/chat", tags=["Chat"])
 
 if __name__ == "__main__":
     port = int(settings.ai_service_port)
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("services.ai.main:app", host="0.0.0.0", port=port, reload=True)
 

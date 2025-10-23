@@ -1,5 +1,7 @@
 """Main FastAPI application for the authentication service."""
 
+import os
+import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -170,7 +172,5 @@ async def root():
 
 
 if __name__ == "__main__":
-    import uvicorn
-    import os
     port = int(os.getenv("SERVICE_PORT", "8001"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("services.auth.main:app", host="0.0.0.0", port=port, reload=True)

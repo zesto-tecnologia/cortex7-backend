@@ -3,12 +3,14 @@ HR microservice main application.
 Handles employee management, contracts, and HR operations.
 """
 
+import os
+import uvicorn
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from shared.database.connection import get_db
 from shared.config.settings import settings
-import uvicorn
 
 # Create FastAPI app
 app = FastAPI(
@@ -61,4 +63,4 @@ app.include_router(beneficios.router, prefix="/beneficios", tags=["Benefícios"]
 
 if __name__ == "__main__":
     port = int(settings.hr_service_port)
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("services.hr.main:app", host="0.0.0.0", port=port, reload=True)

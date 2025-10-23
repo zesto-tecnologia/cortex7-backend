@@ -3,10 +3,12 @@ Legal microservice main application.
 Handles contracts, legal processes, and compliance.
 """
 
+import os
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from shared.config.settings import settings
-import uvicorn
 
 # Create FastAPI app
 app = FastAPI(
@@ -58,4 +60,4 @@ app.include_router(prazos.router, prefix="/prazos", tags=["Prazos e Alertas"])
 
 if __name__ == "__main__":
     port = int(settings.legal_service_port)
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("services.legal.main:app", host="0.0.0.0", port=port, reload=True)

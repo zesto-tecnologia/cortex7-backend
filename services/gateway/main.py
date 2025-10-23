@@ -2,12 +2,14 @@
 API Gateway for the Cortex microservices architecture.
 """
 
+import httpx
+import logging
+import uvicorn
+from typing import Any, Dict
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
-import httpx
-import logging
-from typing import Any, Dict
+
 from shared.config.settings import settings
 
 # Configure logging
@@ -175,5 +177,4 @@ async def gateway_proxy(request: Request, path: str):
 
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=settings.gateway_port)

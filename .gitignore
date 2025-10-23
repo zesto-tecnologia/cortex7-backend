@@ -145,9 +145,12 @@ venv.bak/
 .env
 .env.*
 !.env.example
+!.env.mcp.example
 *.env
 .envrc
 .secrets
+.env.bak
+.env.backup
 
 # JWT Keys and Certificates
 keys/
