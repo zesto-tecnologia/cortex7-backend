@@ -3,7 +3,6 @@ Procurement microservice main application.
 Handles purchase orders, supplier management, and procurement workflows.
 """
 
-import os
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

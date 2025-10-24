@@ -1,5 +1,5 @@
 """
-Pydantic schemas for Processos Jurídicos (Legal Processes).
+Pydantic schemas for Lawsuits.
 """
 
 from pydantic import BaseModel, Field
@@ -10,47 +10,47 @@ from uuid import UUID
 
 
 class LawsuitBase(BaseModel):
-    """Base schema for Legal Process."""
+    """Base schema for Lawsuit."""
 
     company_id: UUID
     case_number: Optional[str] = Field(None, max_length=50)
-    type: Optional[str] = Field(None, max_length=50)
+    lawsuit_type: Optional[str] = Field(None, max_length=50)
     parte_contraria: Optional[str] = Field(None, max_length=255)
-    valor_causa: Optional[Decimal] = Field(None, decimal_places=2)
+    cause_amount: Optional[Decimal] = Field(None, decimal_places=2)
     status: Optional[str] = Field(None, max_length=30)
-    risco: Optional[str] = Field(None, max_length=20)
+    risk: Optional[str] = Field(None, max_length=20)
     tribunal: Optional[str] = Field(None, max_length=100)
-    advogado_responsavel: Optional[str] = Field(None, max_length=255)
-    historico: Optional[List[Dict[str, Any]]] = None
-    proxima_acao: Optional[date] = None
+    responsible_attorney: Optional[str] = Field(None, max_length=255)
+    history: Optional[List[Dict[str, Any]]] = None
+    next_action: Optional[date] = None
     next_action_description: Optional[str] = None
     documentos_ids: Optional[List[UUID]] = None
 
 
 class LawsuitCreate(LawsuitBase):
-    """Schema for creating a Legal Process."""
+    """Schema for creating a Lawsuit."""
     pass
 
 
 class LawsuitUpdate(BaseModel):
-    """Schema for updating a Legal Process."""
+    """Schema for updating a Lawsuit."""
 
     case_number: Optional[str] = Field(None, max_length=50)
-    type: Optional[str] = Field(None, max_length=50)
-    parte_contraria: Optional[str] = Field(None, max_length=255)
-    valor_causa: Optional[Decimal] = Field(None, decimal_places=2)
+    lawsuit_type: Optional[str] = Field(None, max_length=50)
+    counterparty: Optional[str] = Field(None, max_length=255)
+    cause_amount: Optional[Decimal] = Field(None, decimal_places=2)
     status: Optional[str] = Field(None, max_length=30)
-    risco: Optional[str] = Field(None, max_length=20)
+    risk: Optional[str] = Field(None, max_length=20)
     tribunal: Optional[str] = Field(None, max_length=100)
-    advogado_responsavel: Optional[str] = Field(None, max_length=255)
-    historico: Optional[List[Dict[str, Any]]] = None
-    proxima_acao: Optional[date] = None
+    responsible_attorney: Optional[str] = Field(None, max_length=255)
+    history: Optional[List[Dict[str, Any]]] = None
+    next_action: Optional[date] = None
     next_action_description: Optional[str] = None
-    documentos_ids: Optional[List[UUID]] = None
+    document_ids: Optional[List[UUID]] = None
 
 
 class LawsuitResponse(LawsuitBase):
-    """Schema for Legal Process response."""
+    """Schema for Lawsuit response."""
 
     id: UUID
     created_at: datetime
@@ -60,7 +60,7 @@ class LawsuitResponse(LawsuitBase):
 
 
 class LawsuitHistory(BaseModel):
-    """Schema for process history entry."""
+    """Schema for lawsuit history entry."""
 
     date: date
     event: str = Field(..., max_length=100)

@@ -1,12 +1,12 @@
 """
-Legal models: Contract and LegalProcess.
+Legal models: Contract and Lawsuit.
 """
 
 from sqlalchemy import Column, String, ForeignKey, JSON, DECIMAL, Date, Boolean, ARRAY
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from shared.database.connection import Base
-from shared.models.base import BaseModelMixin, UUIDMixin
+from shared.models.base import BaseModelMixin
 
 
 class Contract(Base, BaseModelMixin):
@@ -36,17 +36,17 @@ class Contract(Base, BaseModelMixin):
     responsible = relationship("UserProfile", back_populates="contracts")
 
 
-class LegalProcess(Base, BaseModelMixin):
-    """Legal Process model."""
+class Lawsuit(Base, BaseModelMixin):
+    """Lawsuit model."""
 
-    __tablename__ = "legal_processes"
+    __tablename__ = "lawsuits"
 
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
-    process_number = Column(String(50), unique=True, index=True)
-    process_type = Column(String(50))  # labor, civil, tax
+    case_number = Column(String(50), unique=True, index=True)
+    lawsuit_type = Column(String(50))  # labor, civil, tax
     counterparty = Column(String(255))
     cause_amount = Column(DECIMAL(15, 2))
-    status = Column(String(30))  # ongoing, suspended, concluded
+    status = Column(String(30))  # active, suspended, concluded
     risk = Column(String(20))  # low, medium, high
     court = Column(String(100))
     responsible_attorney = Column(String(255))
@@ -56,4 +56,4 @@ class LegalProcess(Base, BaseModelMixin):
     document_ids = Column(ARRAY(UUID(as_uuid=True)))  # Array of document IDs
 
     # Relationships
-    company = relationship("Company", back_populates="legal_processes")
+    company = relationship("Company", back_populates="lawsuits")

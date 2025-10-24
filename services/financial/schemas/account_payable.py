@@ -24,7 +24,7 @@ class AccountPayableBase(BaseModel):
     cost_center: Optional[str] = Field(None, max_length=50)
     category: Optional[str] = Field(None, max_length=50)
     metadata: Optional[Dict[str, Any]] = None
-    prioridade: int = Field(default=5, ge=1, le=10)
+    priority: int = Field(default=5, ge=1, le=10)
 
 
 class AccountPayableCreate(AccountPayableBase):
@@ -46,7 +46,7 @@ class AccountPayableUpdate(BaseModel):
     cost_center: Optional[str] = Field(None, max_length=50)
     category: Optional[str] = Field(None, max_length=50)
     metadata: Optional[Dict[str, Any]] = None
-    prioridade: Optional[int] = Field(None, ge=1, le=10)
+    priority: Optional[int] = Field(None, ge=1, le=10)
 
 
 class AccountPayableResponse(AccountPayableBase):

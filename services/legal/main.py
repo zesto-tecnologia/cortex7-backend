@@ -3,7 +3,6 @@ Legal microservice main application.
 Handles contracts, legal processes, and compliance.
 """
 
-import os
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,7 +35,7 @@ async def root():
         "status": "operational",
         "features": [
             "contract_management",
-            "legal_processes",
+            "lawsuit_management",
             "compliance_tracking",
             "deadline_monitoring"
         ]
@@ -54,8 +53,8 @@ from services.legal.routers import contracts, lawsuits, deadlines
 
 # Include routers
 app.include_router(contracts.router, prefix="/contracts", tags=["Contracts"])
-app.include_router(lawsuits.router, prefix="/lawsuits", tags=["Legal Processes"])
-app.include_router(deadlines.router, prefix="/deadlines", tags=["Deadlines & Alerts"])
+app.include_router(lawsuits.router, prefix="/lawsuits", tags=["Lawsuit Management"])
+app.include_router(deadlines.router, prefix="/deadlines", tags=["Deadline Monitoring"])
 
 
 if __name__ == "__main__":

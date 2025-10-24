@@ -12,12 +12,12 @@ class UserBase(BaseModel):
     """Base schema for User."""
 
     company_id: UUID
-    departamento_id: Optional[UUID] = None
-    nome: str = Field(..., max_length=255)
+    department_id: Optional[UUID] = None
+    name: str = Field(..., max_length=255)
     email: EmailStr
-    cargo: Optional[str] = Field(None, max_length=100)
-    alcadas: Optional[Dict[str, float]] = None
-    status: str = Field(default="ativo", max_length=20)
+    position: Optional[str] = Field(None, max_length=100)
+    benefits: Optional[Dict[str, float]] = None
+    status: str = Field(default="active", max_length=20)
 
 
 class UserCreate(UserBase):
@@ -28,11 +28,11 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     """Schema for updating a User."""
 
-    departamento_id: Optional[UUID] = None
-    nome: Optional[str] = Field(None, max_length=255)
+    department_id: Optional[UUID] = None
+    name: Optional[str] = Field(None, max_length=255)
     email: Optional[EmailStr] = None
-    cargo: Optional[str] = Field(None, max_length=100)
-    alcadas: Optional[Dict[str, float]] = None
+    position: Optional[str] = Field(None, max_length=100)
+    benefits: Optional[Dict[str, float]] = None
     status: Optional[str] = Field(None, max_length=20)
 
 

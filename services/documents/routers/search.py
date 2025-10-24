@@ -38,23 +38,23 @@ async def semantic_search(
             SELECT
                 id,
                 title,
-                departamento,
+                department,
                 type,
-                conteudo_original,
+                original_content,
                 metadata,
                 file_url,
                 1 - (embedding <=> :embedding::vector) as similarity
             FROM documents
             WHERE company_id = :company_id
-                AND status = 'ativo'
+                AND status = 'active'
                 AND embedding IS NOT NULL
-                {:departamento_filter}
-                {:tipo_filter}
+                {:department_filter}
+                {:type_filter}
             ORDER BY embedding <=> :embedding::vector
             LIMIT :limit
         """.format(
-            departamento_filter="AND departamento = :departamento" if query.departamento else "",
-            tipo_filter="AND type = :type" if query.type else ""
+            department_filter="AND department = :department" if query.department else "",
+            type_filter="AND type = :type" if query.type else ""
         ))
 
         params = {
@@ -63,8 +63,8 @@ async def semantic_search(
             "limit": query.limit or 10
         }
 
-        if query.departamento:
-            params["departamento"] = query.departamento
+        if query.department:
+            params["department"] = query.department
         if query.type:
             params["type"] = query.type
 
@@ -81,9 +81,9 @@ async def semantic_search(
             search_results.append(SearchResult(
                 id=row.id,
                 title=row.title,
-                departamento=row.departamento,
+                department=row.department,
                 type=row.type,
-                conteudo_preview=row.conteudo_original[:500] if row.conteudo_original else None,
+                original_content_preview=row.original_content[:500] if row.original_content else None,
                 similarity_score=float(row.similarity),
                 metadata=row.metadata,
                 file_url=row.file_url
@@ -122,16 +122,16 @@ async def find_similar_documents(
             SELECT
                 id,
                 title,
-                departamento,
+                department,
                 type,
-                conteudo_original,
+                original_content,
                 metadata,
                 file_url,
                 1 - (embedding <=> :embedding::vector) as similarity
             FROM documents
             WHERE id != :document_id
                 AND company_id = :company_id
-                AND status = 'ativo'
+                AND status = 'active'
                 AND embedding IS NOT NULL
             ORDER BY embedding <=> :embedding::vector
             LIMIT :limit
@@ -153,9 +153,9 @@ async def find_similar_documents(
             search_results.append(SearchResult(
                 id=row.id,
                 title=row.title,
-                departamento=row.departamento,
+                department=row.department,
                 type=row.type,
-                conteudo_preview=row.conteudo_original[:500] if row.conteudo_original else None,
+                original_content_preview=row.original_content[:500] if row.original_content else None,
                 similarity_score=float(row.similarity),
                 metadata=row.metadata,
                 file_url=row.file_url
@@ -180,10 +180,10 @@ async def search_by_metadata(
     Search documents by metadata key-value pairs.
     """
     sql = text("""
-        SELECT id, title, departamento, type, metadata, file_url
+        SELECT id, title, department, type, metadata, file_url
         FROM documents
         WHERE company_id = :company_id
-            AND status = 'ativo'
+            AND status = 'active'
             AND metadata @> :search_json::jsonb
         LIMIT 100
     """)
@@ -201,7 +201,7 @@ async def search_by_metadata(
         {
             "id": row.id,
             "title": row.title,
-            "departamento": row.departamento,
+            "department": row.department,
             "type": row.type,
             "metadata": row.metadata,
             "file_url": row.file_url

@@ -28,8 +28,8 @@ async def get_spend_overview(
     # Total spend
     query = select(
         func.count(PurchaseOrder.id).label("total_orders"),
-        func.sum(PurchaseOrder.total_value).label("total_value"),
-        func.avg(PurchaseOrder.total_value).label("average_value")
+        func.sum(PurchaseOrder.total_amount).label("total_amount"),
+        func.avg(PurchaseOrder.total_amount).label("average_value")
     ).where(
         and_(
             PurchaseOrder.company_id == company_id,
@@ -45,7 +45,7 @@ async def get_spend_overview(
     status_query = select(
         PurchaseOrder.status,
         func.count(PurchaseOrder.id).label("quantity"),
-        func.sum(PurchaseOrder.total_value).label("value")
+        func.sum(PurchaseOrder.total_amount).label("amount")
     ).where(
         and_(
             PurchaseOrder.company_id == company_id,
@@ -59,13 +59,13 @@ async def get_spend_overview(
     return {
         "period_days": period_days,
         "total_orders": stats.total_orders or 0,
-        "total_value": float(stats.total_value) if stats.total_value else 0,
+        "total_amount": float(stats.total_amount) if stats.total_amount else 0,
         "average_value": float(stats.average_value) if stats.average_value else 0,
         "by_status": [
             {
                 "status": row.status,
                 "quantity": row.quantity,
-                "value": float(row.value) if row.value else 0
+                "amount": float(row.amount) if row.amount else 0
             }
             for row in status_breakdown
         ]
@@ -84,7 +84,7 @@ async def get_top_suppliers(
         Supplier.company_name,
         Supplier.tax_id,
         func.count(PurchaseOrder.id).label("total_orders"),
-        func.sum(PurchaseOrder.total_value).label("total_value")
+        func.sum(PurchaseOrder.total_amount).label("total_amount")
     ).join(
         Supplier,
         PurchaseOrder.supplier_id == Supplier.id
@@ -98,7 +98,7 @@ async def get_top_suppliers(
         Supplier.company_name,
         Supplier.tax_id
     ).order_by(
-        func.sum(PurchaseOrder.total_value).desc()
+        func.sum(PurchaseOrder.total_amount).desc()
     ).limit(limit)
 
     result = await db.execute(query)
@@ -110,7 +110,7 @@ async def get_top_suppliers(
             "company_name": s.company_name,
             "tax_id": s.tax_id,
             "total_orders": s.total_orders,
-            "total_value": float(s.total_value) if s.total_value else 0
+            "total_amount": float(s.total_amount) if s.total_amount else 0
         }
         for s in suppliers
     ]
@@ -125,7 +125,7 @@ async def get_spend_by_category(
     query = select(
         PurchaseOrder.cost_center,
         func.count(PurchaseOrder.id).label("quantity"),
-        func.sum(PurchaseOrder.total_value).label("value")
+        func.sum(PurchaseOrder.total_amount).label("amount")
     ).where(
         and_(
             PurchaseOrder.company_id == company_id,
@@ -136,14 +136,14 @@ async def get_spend_by_category(
     result = await db.execute(query)
     categories = result.fetchall()
 
-    total_spend = sum(float(c.value) if c.value else 0 for c in categories)
+    total_spend = sum(float(c.amount) if c.amount else 0 for c in categories)
 
     return [
         {
             "category": c.cost_center or "Uncategorized",
             "quantity": c.quantity,
-            "value": float(c.value) if c.value else 0,
-            "percentage": (float(c.value) / total_spend * 100) if c.value and total_spend > 0 else 0
+            "amount": float(c.amount) if c.amount else 0,
+            "percentage": (float(c.amount) / total_spend * 100) if c.amount and total_spend > 0 else 0
         }
         for c in categories
     ]
@@ -225,14 +225,14 @@ async def get_savings_opportunities(
         if order.items:
             for item in order.items:
                 description = item.get("description", "")
-                unit_value = item.get("unit_value", 0)
+                unit_amount = item.get("unit_amount", 0)
 
                 if description not in item_prices:
                     item_prices[description] = []
 
                 item_prices[description].append({
                     "supplier_id": order.supplier_id,
-                    "value": unit_value,
+                    "amount": unit_amount,
                     "date": order.created_at
                 })
 
@@ -240,23 +240,23 @@ async def get_savings_opportunities(
     opportunities = []
     for item, prices in item_prices.items():
         if len(prices) > 1:
-            values = [p["value"] for p in prices]
-            min_value = min(values)
-            max_value = max(values)
+            values = [p["amount"] for p in prices]
+            min_amount = min(values)
+            max_amount = max(values)
 
-            if max_value > min_value * 1.1:  # More than 10% difference
-                potential_savings = (max_value - min_value) / max_value * 100
+            if max_amount > min_amount * 1.1:  # More than 10% difference
+                potential_savings = (max_amount - min_amount) / max_amount * 100
 
                 opportunities.append({
                     "item": item,
-                    "lowest_price": min_value,
-                    "highest_price": max_value,
-                    "potential_savings_pct": potential_savings,
+                    "lowest_amount": min_amount,
+                    "highest_amount": max_amount,
+                    "potential_savings_percentage": potential_savings,
                     "suppliers_count": len(set(p["supplier_id"] for p in prices))
                 })
 
     # Sort by potential savings
-    opportunities.sort(key=lambda x: x["potential_savings_pct"], reverse=True)
+    opportunities.sort(key=lambda x: x["potential_savings_percentage"], reverse=True)
 
     return {
         "total_opportunities": len(opportunities),

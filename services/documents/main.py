@@ -5,11 +5,9 @@ Handles document management with vector embeddings for semantic search.
 
 import os
 import uvicorn
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.database.connection import get_db
 from shared.config.settings import settings
 
 # Create FastAPI app

@@ -13,21 +13,21 @@ class EmployeeBase(BaseModel):
     """Base schema for Employee."""
 
     company_id: UUID
-    usuario_id: Optional[UUID] = None
+    user_id: Optional[UUID] = None
     cpf: str = Field(..., min_length=11, max_length=11)
-    data_nascimento: Optional[date] = None
-    data_admissao: date
-    data_demissao: Optional[date] = None
-    cargo: str = Field(..., max_length=100)
-    departamento_id: Optional[UUID] = None
-    salario: Optional[Decimal] = Field(None, decimal_places=2)
-    tipo_contrato: Optional[str] = Field(None, max_length=20)
-    regime_trabalho: Optional[str] = Field(None, max_length=20)
-    dados_pessoais: Optional[Dict[str, Any]] = None
-    beneficios: Optional[Dict[str, Any]] = None
-    documentos: Optional[Dict[str, Any]] = None
-    ferias: Optional[Dict[str, Any]] = None
-    status: str = Field(default="ativo", max_length=20)
+    birth_date: Optional[date] = None
+    hire_date: date
+    termination_date: Optional[date] = None
+    position: str = Field(..., max_length=100)
+    department_id: Optional[UUID] = None
+    salary: Optional[Decimal] = Field(None, decimal_places=2)
+    contract_type: Optional[str] = Field(None, max_length=20)
+    work_mode: Optional[str] = Field(None, max_length=20)
+    personal_data: Optional[Dict[str, Any]] = None
+    benefits: Optional[Dict[str, Any]] = None
+    documents: Optional[Dict[str, Any]] = None
+    vacations: Optional[Dict[str, Any]] = None
+    status: str = Field(default="active", max_length=20)
 
 
 class EmployeeCreate(EmployeeBase):
@@ -38,18 +38,18 @@ class EmployeeCreate(EmployeeBase):
 class EmployeeUpdate(BaseModel):
     """Schema for updating an Employee."""
 
-    usuario_id: Optional[UUID] = None
-    data_nascimento: Optional[date] = None
-    data_demissao: Optional[date] = None
-    cargo: Optional[str] = Field(None, max_length=100)
-    departamento_id: Optional[UUID] = None
-    salario: Optional[Decimal] = Field(None, decimal_places=2)
-    tipo_contrato: Optional[str] = Field(None, max_length=20)
-    regime_trabalho: Optional[str] = Field(None, max_length=20)
-    dados_pessoais: Optional[Dict[str, Any]] = None
-    beneficios: Optional[Dict[str, Any]] = None
-    documentos: Optional[Dict[str, Any]] = None
-    ferias: Optional[Dict[str, Any]] = None
+    user_id: Optional[UUID] = None
+    birth_date: Optional[date] = None
+    termination_date: Optional[date] = None
+    position: Optional[str] = Field(None, max_length=100)
+    department_id: Optional[UUID] = None
+    salary: Optional[Decimal] = Field(None, decimal_places=2)
+    contract_type: Optional[str] = Field(None, max_length=20)
+    work_mode: Optional[str] = Field(None, max_length=20)
+    personal_data: Optional[Dict[str, Any]] = None
+    benefits: Optional[Dict[str, Any]] = None
+    documents: Optional[Dict[str, Any]] = None
+    vacations: Optional[Dict[str, Any]] = None
     status: Optional[str] = Field(None, max_length=20)
 
 
@@ -66,7 +66,7 @@ class EmployeeResponse(EmployeeBase):
 class EmployeeWithContracts(EmployeeResponse):
     """Employee with contracts."""
 
-    contratos_trabalho: List["EmploymentContractResponse"] = []
+    contracts: List["EmploymentContractResponse"] = []
 
     class Config:
         from_attributes = True

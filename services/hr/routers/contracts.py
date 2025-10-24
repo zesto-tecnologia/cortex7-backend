@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
 from uuid import UUID
-from datetime import date
+from datetime import datetime
 
 from shared.database.connection import get_db
 from shared.models.hr import EmploymentContract
@@ -21,7 +21,7 @@ router = APIRouter()
 
 
 @router.get("/employee/{employee_id}", response_model=List[EmploymentContractResponse])
-async def list_contratos_funcionario(
+async def list_contracts_for_employee(
     employee_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
@@ -34,14 +34,14 @@ async def list_contratos_funcionario(
     return result.scalars().all()
 
 
-@router.get("/{contrato_id}", response_model=EmploymentContractResponse)
-async def get_contrato(
-    contrato_id: UUID,
+@router.get("/{contract_id}", response_model=EmploymentContractResponse)
+async def get_contract(
+    contract_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific employment contract."""
     result = await db.execute(
-        select(EmploymentContract).where(EmploymentContract.id == contrato_id)
+        select(EmploymentContract).where(EmploymentContract.id == contract_id)
     )
     contract = result.scalar_one_or_none()
 
@@ -52,34 +52,34 @@ async def get_contrato(
 
 
 @router.post("/", response_model=EmploymentContractResponse)
-async def create_contrato(
+async def create_contract(
     contract: EmploymentContractCreate,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new employment contract."""
-    db_contrato = EmploymentContract(**contract.dict())
-    db.add(db_contrato)
+    db_contract = EmploymentContract(**contract.dict())
+    db.add(db_contract)
     await db.commit()
-    await db.refresh(db_contrato)
-    return db_contrato
+    await db.refresh(db_contract)
+    return db_contract
 
 
-@router.put("/{contrato_id}", response_model=EmploymentContractResponse)
-async def update_contrato(
-    contrato_id: UUID,
-    contrato_update: EmploymentContractUpdate,
+@router.put("/{contract_id}", response_model=EmploymentContractResponse)
+async def update_contract(
+    contract_id: UUID,
+    contract_update: EmploymentContractUpdate,
     db: AsyncSession = Depends(get_db),
 ):
     """Update an employment contract."""
     result = await db.execute(
-        select(EmploymentContract).where(EmploymentContract.id == contrato_id)
+        select(EmploymentContract).where(EmploymentContract.id == contract_id)
     )
     contract = result.scalar_one_or_none()
 
     if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
 
-    for field, value in contrato_update.dict(exclude_unset=True).items():
+    for field, value in contract_update.dict(exclude_unset=True).items():
         setattr(contract, field, value)
 
     await db.commit()
@@ -87,40 +87,39 @@ async def update_contrato(
     return contract
 
 
-@router.post("/{contrato_id}/assinar")
-async def assinar_contrato(
-    contrato_id: UUID,
-    assinatura_funcionario: bool = False,
-    assinatura_empresa: bool = False,
+@router.post("/{contract_id}/sign")
+async def sign_contract(
+    contract_id: UUID,
+    employee_signature: bool = False,
+    company_signature: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
     """Sign an employment contract."""
     result = await db.execute(
-        select(EmploymentContract).where(EmploymentContract.id == contrato_id)
+        select(EmploymentContract).where(EmploymentContract.id == contract_id)
     )
     contract = result.scalar_one_or_none()
 
     if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
 
-    from datetime import datetime
 
-    if assinatura_funcionario:
-        contract.assinatura_funcionario_data = datetime.now()
+    if employee_signature:
+        contract.employee_signature_date = datetime.now()
 
-    if assinatura_empresa:
-        contract.assinatura_empresa_data = datetime.now()
+    if company_signature:
+        contract.company_signature_date = datetime.now()
 
     # Mark as signed if both parties have signed
-    if contract.assinatura_funcionario_data and contract.assinatura_empresa_data:
-        contract.assinado = True
+    if contract.employee_signature_date and contract.company_signature_date:
+        contract.signed = True
 
     await db.commit()
     await db.refresh(contract)
 
     return {
         "message": "Contract signed successfully",
-        "assinado": contract.assinado,
-        "assinatura_funcionario": contract.assinatura_funcionario_data is not None,
-        "assinatura_empresa": contract.assinatura_empresa_data is not None
+        "signed": contract.signed,
+        "employee_signature": contract.employee_signature_date is not None,
+        "company_signature": contract.company_signature_date is not None
     }

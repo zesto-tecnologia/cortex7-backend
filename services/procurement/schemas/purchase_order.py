@@ -14,7 +14,7 @@ class PurchaseOrderItem(BaseModel):
 
     description: str = Field(..., min_length=1, max_length=500)
     quantity: int = Field(..., ge=1)
-    unit_value: float = Field(..., gt=0)
+    unit_amount: float = Field(..., gt=0)
     unit: Optional[str] = Field(None, max_length=10)  # UN, KG, L, etc.
     observations: Optional[str] = None
 

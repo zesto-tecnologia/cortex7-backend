@@ -4,7 +4,7 @@ Contratos (Legal Contracts) router.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_
 from typing import List, Optional
 from datetime import date, timedelta
 from uuid import UUID
@@ -22,11 +22,11 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[ContractResponse])
-async def list_contratos(
+async def list_contracts(
     company_id: UUID,
     type: Optional[str] = None,
     status: Optional[str] = None,
-    vencendo_em_dias: Optional[int] = None,
+    expiring_in_days: Optional[int] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
@@ -40,8 +40,8 @@ async def list_contratos(
     if status:
         query = query.where(Contract.status == status)
 
-    if vencendo_em_dias:
-        deadline_date = date.today() + timedelta(days=vencendo_em_dias)
+    if expiring_in_days:
+        deadline_date = date.today() + timedelta(days=expiring_in_days)
         query = query.where(
             and_(
                 Contract.end_date != None,
@@ -54,19 +54,19 @@ async def list_contratos(
     return result.scalars().all()
 
 
-@router.get("/vencimentos")
-async def get_contratos_vencimento(
+@router.get("/expiration")
+async def get_contracts_expiration(
     company_id: UUID,
-    dias: int = 30,
+    days: int = 30,
     db: AsyncSession = Depends(get_db),
 ):
     """Get contracts expiring within specified days."""
-    deadline_date = date.today() + timedelta(days=dias)
+    deadline_date = date.today() + timedelta(days=days)
 
     query = select(Contract).where(
         and_(
             Contract.company_id == company_id,
-            Contract.status == "vigente",
+            Contract.status == "active",
             Contract.end_date != None,
             Contract.end_date <= deadline_date
         )
@@ -79,25 +79,28 @@ async def get_contratos_vencimento(
         {
             "id": c.id,
             "type": c.type,
-            "opposing_party": c.opposing_party,
-            "objeto": c.objeto,
+            "counterparty": c.counterparty,
+            "counterparty_tax_id": c.counterparty_tax_id,
+            "subject": c.subject,
+            "amount": float(c.amount) if c.amount else None,
+            "start_date": c.start_date,
             "end_date": c.end_date,
             "days_to_expiration": (c.end_date - date.today()).days,
-            "renovacao_automatica": c.renovacao_automatica,
-            "value": float(c.value) if c.value else None
+            "auto_renewal": c.auto_renewal,
+            "value": float(c.amount) if c.amount else None
         }
         for c in contracts
     ]
 
 
-@router.get("/{contrato_id}", response_model=ContractWithAlerts)
-async def get_contrato(
-    contrato_id: UUID,
+@router.get("/{contract_id}", response_model=ContractWithAlerts)
+async def get_contract(
+    contract_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific contract with alerts."""
     result = await db.execute(
-        select(Contract).where(Contract.id == contrato_id)
+        select(Contract).where(Contract.id == contract_id)
     )
     contract = result.scalar_one_or_none()
 
@@ -105,65 +108,65 @@ async def get_contrato(
         raise HTTPException(status_code=404, detail="Contract not found")
 
     # Calculate alerts
-    alertas = []
+    alerts = []
 
     if contract.end_date:
         days_to_expiration = (contract.end_date - date.today()).days
 
         if days_to_expiration <= 30:
-            alertas.append({
-                "type": "vencimento_proximo",
-                "message": f"Contract vence em {days_to_expiration} dias",
-                "prioridade": "alta" if days_to_expiration <= 7 else "media"
+            alerts.append({
+                "type": "expiration_soon",
+                "message": f"Contract expires in {days_to_expiration} days",
+                "priority": "high" if days_to_expiration <= 7 else "medium"
             })
 
-    if contract.prazos_importantes:
-        for deadline in contract.prazos_importantes:
-            prazo_data = date.fromisoformat(deadline["date"])
-            dias_para_prazo = (prazo_data - date.today()).days
+    if contract.important_dates:
+        for deadline in contract.important_dates:
+            deadline_date = date.fromisoformat(deadline["date"])
+            days_to_deadline = (deadline_date - date.today()).days
 
-            if dias_para_prazo <= 15 and not deadline.get("notificado"):
-                alertas.append({
-                    "type": "prazo_importante",
+            if days_to_deadline <= 15 and not deadline.get("notified"):
+                alerts.append({
+                    "type": "important_date",
                     "message": deadline["description"],
-                    "dias_restantes": dias_para_prazo,
-                    "prioridade": "alta" if dias_para_prazo <= 3 else "media"
+                    "days_remaining": days_to_deadline,
+                    "priority": "high" if days_to_deadline <= 3 else "medium"
                 })
 
     response = ContractWithAlerts(**contract.__dict__)
-    response.alertas = alertas
+    response.alerts = alerts
     return response
 
 
 @router.post("/", response_model=ContractResponse)
-async def create_contrato(
+async def create_contract(
     contract: ContractCreate,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new contract."""
-    db_contrato = Contract(**contract.dict())
-    db.add(db_contrato)
+    db_contract = Contract(**contract.dict())
+    db.add(db_contract)
     await db.commit()
-    await db.refresh(db_contrato)
-    return db_contrato
+    await db.refresh(db_contract)
+    return db_contract
 
 
-@router.put("/{contrato_id}", response_model=ContractResponse)
-async def update_contrato(
-    contrato_id: UUID,
-    contrato_update: ContractUpdate,
+@router.put("/{contract_id}", response_model=ContractResponse)
+async def update_contract(
+    contract_id: UUID,
+    contract_update: ContractUpdate,
     db: AsyncSession = Depends(get_db),
 ):
     """Update a contract."""
     result = await db.execute(
-        select(Contract).where(Contract.id == contrato_id)
+        select(Contract).where(Contract.id == contract_id)
     )
     contract = result.scalar_one_or_none()
 
     if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
 
-    for field, value in contrato_update.dict(exclude_unset=True).items():
+    for field, value in contract_update.dict(exclude_unset=True).items():
         setattr(contract, field, value)
 
     await db.commit()
@@ -171,15 +174,15 @@ async def update_contrato(
     return contract
 
 
-@router.post("/{contrato_id}/renovar")
-async def renovar_contrato(
-    contrato_id: UUID,
-    novo_fim: date,
+@router.post("/{contract_id}/renew")
+async def renew_contract(
+    contract_id: UUID,
+    new_end_date: date,
     db: AsyncSession = Depends(get_db),
 ):
     """Renew a contract."""
     result = await db.execute(
-        select(Contract).where(Contract.id == contrato_id)
+        select(Contract).where(Contract.id == contract_id)
     )
     contract = result.scalar_one_or_none()
 
@@ -187,52 +190,52 @@ async def renovar_contrato(
         raise HTTPException(status_code=404, detail="Contract not found")
 
     # Update contract end date
-    contract.end_date = novo_fim
-    contract.status = "vigente"
+    contract.end_date = new_end_date
+    contract.status = "active"
 
     # Add renewal to metadata
     if not contract.metadata:
         contract.metadata = {}
 
-    if "renovacoes" not in contract.metadata:
-        contract.metadata["renovacoes"] = []
+    if "renewals" not in contract.metadata:
+        contract.metadata["renewals"] = []
 
-    contract.metadata["renovacoes"].append({
+    contract.metadata["renewals"].append({
         "renewal_date": str(date.today()),
-        "new_end_date": str(novo_fim)
+        "new_end_date": str(new_end_date)
     })
 
     await db.commit()
 
-    return {"message": "Contract renewed successfully", "new_end_date": novo_fim}
+    return {"message": "Contract renewed successfully", "new_end_date": new_end_date}
 
 
-@router.post("/{contrato_id}/rescindir")
-async def rescindir_contrato(
-    contrato_id: UUID,
+@router.post("/{contract_id}/terminate")
+async def terminate_contract(
+    contract_id: UUID,
     termination_date: date,
-    motivo: str,
+    reason: str,
     db: AsyncSession = Depends(get_db),
 ):
     """Terminate a contract."""
     result = await db.execute(
-        select(Contract).where(Contract.id == contrato_id)
+        select(Contract).where(Contract.id == contract_id)
     )
     contract = result.scalar_one_or_none()
 
     if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
 
-    contract.status = "rescindido"
+    contract.status = "terminated"
     contract.end_date = termination_date
 
     if not contract.metadata:
         contract.metadata = {}
 
-    contract.metadata["rescisao"] = {
+    contract.metadata["termination"] = {
         "date": str(termination_date),
-        "motivo": motivo,
-        "registrado_em": str(date.today())
+        "reason": reason,
+        "registered_at": str(date.today())
     }
 
     await db.commit()

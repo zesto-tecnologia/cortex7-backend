@@ -5,7 +5,7 @@ Ordens de Compra (Purchase Orders) router.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
-from typing import List, Optional, Dict
+from typing import List, Optional
 from datetime import date
 from uuid import UUID
 
@@ -95,7 +95,7 @@ async def get_pending_orders(
 
 
 @router.get("/{order_id}", response_model=PurchaseOrderWithApprovals)
-async def get_ordem_compra(
+async def get_purchase_order(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
@@ -117,7 +117,7 @@ async def get_ordem_compra(
 
 
 @router.post("/", response_model=PurchaseOrderResponse)
-async def create_ordem_compra(
+async def create_purchase_order(
     order: PurchaseOrderCreate,
     db: AsyncSession = Depends(get_db),
 ):
@@ -148,7 +148,7 @@ async def create_ordem_compra(
 
 
 @router.put("/{order_id}", response_model=PurchaseOrderResponse)
-async def update_ordem_compra(
+async def update_purchase_order(
     order_id: UUID,
     ordem_update: PurchaseOrderUpdate,
     db: AsyncSession = Depends(get_db),
@@ -162,7 +162,7 @@ async def update_ordem_compra(
     if not order:
         raise HTTPException(status_code=404, detail="Purchase order not found")
 
-    if order.status not in ["rascunho", "awaiting_approval"]:
+    if order.status not in ["draft", "awaiting_approval"]:
         raise HTTPException(
             status_code=400,
             detail="Can only update draft or pending approval orders"
@@ -176,8 +176,8 @@ async def update_ordem_compra(
     if ordem_update.items:
         order.items = [item.dict() for item in ordem_update.items]
         # Recalculate total
-        order.total_value = sum(
-            item["quantity"] * item["unit_value"]
+        order.total_amount = sum(
+            item["quantity"] * item["unit_amount"]
             for item in order.items
         )
 
@@ -186,7 +186,7 @@ async def update_ordem_compra(
     return order
 
 
-@router.post("/{order_id}/aprovar")
+@router.post("/{order_id}/approve")
 async def approve_order(
     order_id: UUID,
     approver_id: UUID,
@@ -220,7 +220,7 @@ async def approve_order(
     # Check approval limit
     procurement_authority = user.authorities.get("procurement", 0) if user.authorities else 0
 
-    if float(order.total_value) > procurement_authority:
+    if float(order.total_amount) > procurement_authority:
         raise HTTPException(
             status_code=403,
             detail=f"Order value exceeds approval limit of {procurement_authority}"
@@ -235,7 +235,7 @@ async def approve_order(
         "name": user.name,
         "approved_at": str(date.today()),
         "level": 1,
-        "approved_value": float(order.total_value)
+        "approved_amount": float(order.total_amount)
     })
 
     order.status = "approved"
@@ -245,11 +245,11 @@ async def approve_order(
     return {"message": "Purchase order approved successfully"}
 
 
-@router.post("/{order_id}/rejeitar")
+@router.post("/{order_id}/reject")
 async def reject_order(
     order_id: UUID,
-    motivo: str,
-    rejeitado_por: UUID,
+    reason: str,
+    rejected_by: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Reject a purchase order."""
@@ -272,9 +272,9 @@ async def reject_order(
     if not order.metadata:
         order.metadata = {}
 
-    order.metadata["rejeicao"] = {
-        "rejeitado_por": str(rejeitado_por),
-        "motivo": motivo,
+    order.metadata["rejection"] = {
+        "rejected_by": str(rejected_by),
+        "reason": reason,
         "date": str(date.today())
     }
 
@@ -283,7 +283,7 @@ async def reject_order(
     return {"message": "Purchase order rejected"}
 
 
-@router.post("/{order_id}/emitir")
+@router.post("/{order_id}/issue")
 async def issue_order(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -308,17 +308,17 @@ async def issue_order(
     if not order.metadata:
         order.metadata = {}
 
-    order.metadata["emissao"] = {
-        "emitido_em": str(date.today())
+    order.metadata["issuance"] = {
+        "issued_at": str(date.today())
     }
 
     await db.commit()
 
-    return {"message": "Purchase order issued to supplier"}
+    return {"message": "Purchase order issued successfully"}
 
 
-@router.post("/{order_id}/receive")
-async def receive_order(
+@router.post("/{order_id}/mark-received")
+async def mark_order_as_received(
     order_id: UUID,
     received_items: List[PurchaseOrderItem],
     db: AsyncSession = Depends(get_db),
@@ -350,4 +350,4 @@ async def receive_order(
 
     await db.commit()
 
-    return {"message": "Purchase order marked as received"}
+    return {"message": "Purchase order marked as received successfully"}

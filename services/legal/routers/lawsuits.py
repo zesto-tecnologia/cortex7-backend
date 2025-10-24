@@ -10,7 +10,7 @@ from datetime import date
 from uuid import UUID
 
 from shared.database.connection import get_db
-from shared.models.legal import LegalProcess as Lawsuit
+from shared.models.legal import Lawsuit
 from services.legal.schemas.lawsuit import (
     LawsuitCreate,
     LawsuitUpdate,
@@ -22,47 +22,47 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[LawsuitResponse])
-async def list_processos(
+async def list_lawsuits(
     company_id: UUID,
-    type: Optional[str] = None,
+    lawsuit_type: Optional[str] = None,
     status: Optional[str] = None,
-    risco: Optional[str] = None,
+    risk: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
 ):
-    """List legal processes with filters."""
+    """List lawsuits with filters."""
     query = select(Lawsuit).where(
         Lawsuit.company_id == company_id
     )
 
-    if type:
-        query = query.where(Lawsuit.type == type)
+    if lawsuit_type:
+        query = query.where(Lawsuit.lawsuit_type == lawsuit_type)
 
     if status:
         query = query.where(Lawsuit.status == status)
 
-    if risco:
-        query = query.where(Lawsuit.risco == risco)
+    if risk:
+        query = query.where(Lawsuit.risk == risk)
 
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
 
 
-@router.get("/proximas-acoes")
-async def get_proximas_acoes(
+@router.get("/next-actions")
+async def get_next_actions(
     company_id: UUID,
-    dias: int = 30,
+    days: int = 30,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get processes with upcoming actions."""
-    deadline_date = date.today().replace(day=date.today().day + dias)
+    """Get lawsuits with upcoming actions."""
+    deadline_date = date.today().replace(day=date.today().day + days)
 
     query = select(Lawsuit).where(
         and_(
             Lawsuit.company_id == company_id,
-            Lawsuit.status == "andamento",
+            Lawsuit.status == "active",
             Lawsuit.next_action != None,
             Lawsuit.next_action <= deadline_date
         )
@@ -73,79 +73,83 @@ async def get_proximas_acoes(
 
     return [
         {
-            "id": p.id,
-            "lawsuit_number": p.lawsuit_number,
-            "type": p.type,
-            "opposing_party": p.opposing_party,
-            "next_action": p.next_action,
-            "next_action_description": p.next_action_description,
-            "dias_restantes": (p.next_action - date.today()).days,
-            "risco": p.risco,
-            "advogado_responsavel": p.advogado_responsavel
+            "id": lawsuit.id,
+            "case_number": lawsuit.case_number,
+            "lawsuit_type": lawsuit.lawsuit_type,
+            "counterparty": lawsuit.counterparty,
+            "cause_amount": lawsuit.cause_amount,
+            "status": lawsuit.status,
+            "risk": lawsuit.risk,
+            "court": lawsuit.court,
+            "responsible_attorney": lawsuit.responsible_attorney,
+            "history": lawsuit.history,
+            "next_action": lawsuit.next_action,
+            "next_action_description": lawsuit.next_action_description,
+            "document_ids": lawsuit.document_ids
         }
-        for p in lawsuits
+        for lawsuit in lawsuits
     ]
 
 
-@router.get("/{processo_id}", response_model=LawsuitResponse)
-async def get_processo(
-    processo_id: UUID,
+@router.get("/{lawsuit_id}", response_model=LawsuitResponse)
+async def get_lawsuit(
+    lawsuit_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a specific legal process."""
+    """Get a specific lawsuit."""
     result = await db.execute(
-        select(Lawsuit).where(Lawsuit.id == processo_id)
+        select(Lawsuit).where(Lawsuit.id == lawsuit_id)
     )
     lawsuit = result.scalar_one_or_none()
 
     if not lawsuit:
-        raise HTTPException(status_code=404, detail="Process not found")
+        raise HTTPException(status_code=404, detail="Lawsuit not found")
 
     return lawsuit
 
 
 @router.post("/", response_model=LawsuitResponse)
-async def create_processo(
+async def create_lawsuit(
     lawsuit: LawsuitCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new legal process."""
+    """Create a new lawsuit."""
     # Check if process number already exists
-    if lawsuit.lawsuit_number:
+    if lawsuit.case_number:
         existing = await db.execute(
             select(Lawsuit).where(
-                Lawsuit.lawsuit_number == lawsuit.lawsuit_number
+                Lawsuit.case_number == lawsuit.case_number
             )
         )
         if existing.scalar_one_or_none():
             raise HTTPException(
                 status_code=400,
-                detail="Process number already exists"
+                detail="Case number already exists"
             )
 
-    db_processo = Lawsuit(**lawsuit.dict())
-    db.add(db_processo)
+    db_lawsuit = Lawsuit(**lawsuit.dict())
+    db.add(db_lawsuit)
     await db.commit()
-    await db.refresh(db_processo)
-    return db_processo
+    await db.refresh(db_lawsuit)
+    return db_lawsuit
 
 
-@router.put("/{processo_id}", response_model=LawsuitResponse)
-async def update_processo(
-    processo_id: UUID,
-    processo_update: LawsuitUpdate,
+@router.put("/{lawsuit_id}", response_model=LawsuitResponse)
+async def update_lawsuit(
+    lawsuit_id: UUID,
+    lawsuit_update: LawsuitUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a legal process."""
+    """Update a lawsuit."""
     result = await db.execute(
-        select(Lawsuit).where(Lawsuit.id == processo_id)
+        select(Lawsuit).where(Lawsuit.id == lawsuit_id)
     )
     lawsuit = result.scalar_one_or_none()
 
     if not lawsuit:
-        raise HTTPException(status_code=404, detail="Process not found")
+        raise HTTPException(status_code=404, detail="Lawsuit not found")
 
-    for field, value in processo_update.dict(exclude_unset=True).items():
+    for field, value in lawsuit_update.dict(exclude_unset=True).items():
         setattr(lawsuit, field, value)
 
     await db.commit()
@@ -153,29 +157,29 @@ async def update_processo(
     return lawsuit
 
 
-@router.post("/{processo_id}/adicionar-historico")
-async def adicionar_historico(
-    processo_id: UUID,
-    historico: LawsuitHistory,
+@router.post("/{lawsuit_id}/add-history")
+async def add_history(
+    lawsuit_id: UUID,
+    history: List[LawsuitHistory],
     db: AsyncSession = Depends(get_db),
 ):
-    """Add history entry to a legal process."""
+    """Add history entry to a lawsuit."""
     result = await db.execute(
-        select(Lawsuit).where(Lawsuit.id == processo_id)
+        select(Lawsuit).where(Lawsuit.id == lawsuit_id)
     )
     lawsuit = result.scalar_one_or_none()
 
     if not lawsuit:
-        raise HTTPException(status_code=404, detail="Process not found")
+        raise HTTPException(status_code=404, detail="Lawsuit not found")
 
-    if not lawsuit.historico:
-        lawsuit.historico = []
+    if not lawsuit.history:
+        lawsuit.history = []
 
-    lawsuit.historico.append({
-        "date": str(historico.date),
-        "event": historico.event,
-        "description": historico.description,
-        "responsible": historico.responsible
+    lawsuit.history.append({
+        "date": str(history.date),
+        "event": history.event,
+        "description": history.description,
+        "responsible": history.responsible
     })
 
     await db.commit()
@@ -183,49 +187,49 @@ async def adicionar_historico(
     return {"message": "History entry added successfully"}
 
 
-@router.get("/report/riscos")
-async def get_relatorio_riscos(
+@router.get("/report/risks")
+async def get_risk_report(
     company_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get risk report for all processes."""
+    """Get risk report for all lawsuits."""
     query = select(Lawsuit).where(
         Lawsuit.company_id == company_id,
-        Lawsuit.status == "andamento"
+        Lawsuit.status == "active"
     )
 
     result = await db.execute(query)
     lawsuits = result.scalars().all()
 
     # Aggregate by risk level
-    riscos = {
-        "baixo": {"quantity": 0, "total_value": 0},
-        "medio": {"quantity": 0, "total_value": 0},
-        "alto": {"quantity": 0, "total_value": 0}
+    risks = {
+        "low": {"quantity": 0, "total_value": 0},
+        "medium": {"quantity": 0, "total_value": 0},
+        "high": {"quantity": 0, "total_value": 0}
     }
 
     for lawsuit in lawsuits:
-        if lawsuit.risco in riscos:
-            riscos[lawsuit.risco]["quantity"] += 1
-            if lawsuit.lawsuit_value:
-                riscos[lawsuit.risco]["total_value"] += float(lawsuit.lawsuit_value)
+        if lawsuit.risk in risks:
+            risks[lawsuit.risk]["quantity"] += 1
+            if lawsuit.cause_amount:
+                risks[lawsuit.risk]["total_value"] += float(lawsuit.cause_amount)
 
     # Aggregate by type
-    tipos = {}
+    types = {}
     for lawsuit in lawsuits:
-        if lawsuit.type not in tipos:
-            tipos[lawsuit.type] = {"quantity": 0, "total_value": 0}
+        if lawsuit.lawsuit_type not in types:
+            types[lawsuit.lawsuit_type] = {"quantity": 0, "total_value": 0}
 
-        tipos[lawsuit.type]["quantity"] += 1
-        if lawsuit.lawsuit_value:
-            tipos[lawsuit.type]["total_value"] += float(lawsuit.lawsuit_value)
+        types[lawsuit.lawsuit_type]["quantity"] += 1
+        if lawsuit.cause_amount:
+            types[lawsuit.lawsuit_type]["total_value"] += float(lawsuit.cause_amount)
 
     return {
         "company_id": company_id,
-        "total_processos": len(lawsuits),
-        "riscos": riscos,
-        "tipos": tipos,
-        "total_value_at_risk": sum(
-            float(p.lawsuit_value) for p in lawsuits if p.lawsuit_value
+        "total_lawsuits": len(lawsuits),
+        "risks": risks,
+        "types": types,
+        "total_cause_amount": sum(
+            float(lawsuit.cause_amount) for lawsuit in lawsuits if lawsuit.cause_amount
         )
     }

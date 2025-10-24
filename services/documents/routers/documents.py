@@ -72,7 +72,7 @@ async def get_document(
 @router.post("/upload", response_model=DocumentResponse)
 async def upload_document(
     company_id: UUID = Form(...),
-    departament: str = Form(...),
+    department: str = Form(...),
     type: str = Form(...),
     title: str = Form(...),
     metadata: str = Form("{}"),
@@ -100,7 +100,7 @@ async def upload_document(
         # Create document record
         document = Document(
             company_id=company_id,
-            department=departament,
+            department=department,
             type=type,
             title=title,
             original_content=extracted_text,
@@ -166,9 +166,9 @@ async def update_document(
         setattr(document, field, value)
 
     # Regenerate embedding if content was updated
-    if document_update.conteudo_original:
+    if document_update.original_content:
         document.embedding = await embedding_service.generate_embedding(
-            document_update.conteudo_original
+            document_update.original_content
         )
 
     await db.commit()

@@ -52,7 +52,7 @@ class DocumentResponse(DocumentBase):
     @classmethod
     def from_orm(cls, obj):
         """Custom from_orm to handle embedding field."""
-        date = {
+        data = {
             "id": obj.id,
             "company_id": obj.company_id,
             "department": obj.department,
@@ -66,4 +66,4 @@ class DocumentResponse(DocumentBase):
             "updated_at": obj.updated_at,
             "has_embedding": obj.embedding is not None
         }
-        return cls(**date)
+        return cls(**data)

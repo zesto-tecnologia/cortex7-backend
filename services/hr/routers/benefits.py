@@ -15,7 +15,7 @@ from shared.models.hr import Employee
 router = APIRouter()
 
 
-class BeneficioUpdate(BaseModel):
+class BenefitsUpdateSchema(BaseModel):
     """Benefit update schema."""
     vale_transporte: bool = False
     transportation_value: float = 0
@@ -29,7 +29,7 @@ class BeneficioUpdate(BaseModel):
 
 
 @router.get("/employee/{employee_id}")
-async def get_beneficios_funcionario(
+async def get_benefits_for_employee(
     employee_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
@@ -46,9 +46,9 @@ async def get_beneficios_funcionario(
 
 
 @router.put("/employee/{employee_id}")
-async def update_beneficios_funcionario(
+async def update_benefits_for_employee(
     employee_id: UUID,
-    benefits: BeneficioUpdate,
+    benefits: BenefitsUpdateSchema,
     db: AsyncSession = Depends(get_db),
 ):
     """Update benefits for an employee."""
@@ -70,22 +70,22 @@ async def update_beneficios_funcionario(
 
 
 @router.get("/report/{company_id}")
-async def get_relatorio_beneficios(
+async def get_benefits_report(
     company_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Generate benefits report for the company."""
     query = select(Employee).where(
         Employee.company_id == company_id,
-        Employee.status == "ativo"
+        Employee.status == "active"
     )
 
     result = await db.execute(query)
-    funcionarios = result.scalars().all()
+    employees = result.scalars().all()
 
     # Aggregate benefits date
-    total_funcionarios = len(funcionarios)
-    beneficios_stats = {
+    total_employees = len(employees)
+    benefits_stats = {
         "vale_transporte": 0,
         "vale_alimentacao": 0,
         "plano_saude": 0,
@@ -95,51 +95,51 @@ async def get_relatorio_beneficios(
         "custo_total_va": 0,
     }
 
-    for func in funcionarios:
-        if func.benefits:
-            if func.benefits.get("vale_transporte"):
-                beneficios_stats["vale_transporte"] += 1
-                beneficios_stats["custo_total_vt"] += func.benefits.get("transportation_value", 0)
+    for employee in employees:
+        if employee.benefits:
+            if employee.benefits.get("vale_transporte"):
+                benefits_stats["vale_transporte"] += 1
+                benefits_stats["custo_total_vt"] += employee.benefits.get("transportation_value", 0)
 
-            if func.benefits.get("vale_alimentacao"):
-                beneficios_stats["vale_alimentacao"] += 1
-                beneficios_stats["custo_total_va"] += func.benefits.get("food_value", 0)
+            if employee.benefits.get("vale_alimentacao"):
+                benefits_stats["vale_alimentacao"] += 1
+                benefits_stats["custo_total_va"] += employee.benefits.get("food_value", 0)
 
-            if func.benefits.get("plano_saude"):
-                beneficios_stats["plano_saude"] += 1
+            if employee.benefits.get("plano_saude"):
+                benefits_stats["plano_saude"] += 1
 
-            if func.benefits.get("plano_odontologico"):
-                beneficios_stats["plano_odontologico"] += 1
+            if employee.benefits.get("plano_odontologico"):
+                benefits_stats["plano_odontologico"] += 1
 
-            if func.benefits.get("seguro_vida"):
-                beneficios_stats["seguro_vida"] += 1
+            if employee.benefits.get("seguro_vida"):
+                benefits_stats["seguro_vida"] += 1
 
     return {
         "company_id": company_id,
-        "total_funcionarios": total_funcionarios,
+        "total_employees": total_employees,
         "benefits": {
             "vale_transporte": {
-                "quantity": beneficios_stats["vale_transporte"],
-                "percentage": (beneficios_stats["vale_transporte"] / total_funcionarios * 100) if total_funcionarios > 0 else 0,
-                "custo_mensal": beneficios_stats["custo_total_vt"]
+                "quantity": benefits_stats["vale_transporte"],
+                "percentage": (benefits_stats["vale_transporte"] / total_employees * 100) if total_employees > 0 else 0,
+                "custo_mensal": benefits_stats["custo_total_vt"]
             },
             "vale_alimentacao": {
-                "quantity": beneficios_stats["vale_alimentacao"],
-                "percentage": (beneficios_stats["vale_alimentacao"] / total_funcionarios * 100) if total_funcionarios > 0 else 0,
-                "custo_mensal": beneficios_stats["custo_total_va"]
+                "quantity": benefits_stats["vale_alimentacao"],
+                "percentage": (benefits_stats["vale_alimentacao"] / total_employees * 100) if total_employees > 0 else 0,
+                "custo_mensal": benefits_stats["custo_total_va"]
             },
             "plano_saude": {
-                "quantity": beneficios_stats["plano_saude"],
-                "percentage": (beneficios_stats["plano_saude"] / total_funcionarios * 100) if total_funcionarios > 0 else 0
+                "quantity": benefits_stats["plano_saude"],
+                "percentage": (benefits_stats["plano_saude"] / total_employees * 100) if total_employees > 0 else 0
             },
             "plano_odontologico": {
-                "quantity": beneficios_stats["plano_odontologico"],
-                "percentage": (beneficios_stats["plano_odontologico"] / total_funcionarios * 100) if total_funcionarios > 0 else 0
+                "quantity": benefits_stats["plano_odontologico"],
+                "percentage": (benefits_stats["plano_odontologico"] / total_employees * 100) if total_employees > 0 else 0
             },
             "seguro_vida": {
-                "quantity": beneficios_stats["seguro_vida"],
-                "percentage": (beneficios_stats["seguro_vida"] / total_funcionarios * 100) if total_funcionarios > 0 else 0
+                "quantity": benefits_stats["seguro_vida"],
+                "percentage": (benefits_stats["seguro_vida"] / total_employees * 100) if total_employees > 0 else 0
             }
         },
-        "custo_total_mensal": beneficios_stats["custo_total_vt"] + beneficios_stats["custo_total_va"]
+        "custo_total_mensal": benefits_stats["custo_total_vt"] + benefits_stats["custo_total_va"]
     }

@@ -2,12 +2,9 @@
 Financial microservice main application.
 """
 
-import os
 import uvicorn
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import FastAPI
 
-from shared.database.connection import get_db
 from shared.config.settings import settings
 
 # Create FastAPI app

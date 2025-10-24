@@ -3,13 +3,10 @@ HR microservice main application.
 Handles employee management, contracts, and HR operations.
 """
 
-import os
 import uvicorn
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.database.connection import get_db
 from shared.config.settings import settings
 
 # Create FastAPI app

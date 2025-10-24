@@ -13,9 +13,9 @@ DOCUMENTS_SERVICE_URL = "http://documents-service:8006"
 
 class SearchDocumentsTool(BaseTool):
     name: str = "Search Documents"
-    description: str = "Search for documents using semantic search. Use this to find relevant documents, contracts, reports, or any company documentation. Input: company_id (required), query (required), departamento (optional)"
+    description: str = "Search for documents using semantic search. Use this to find relevant documents, contracts, reports, or any company documentation. Input: company_id (required), query (required), department (optional)"
     
-    def _run(self, company_id: str, query: str, departamento: str = "") -> str:
+    def _run(self, company_id: str, query: str, department: str = "") -> str:
         """Execute the tool."""
         try:
             params = {
@@ -23,8 +23,8 @@ class SearchDocumentsTool(BaseTool):
                 "query": query,
                 "limit": 10
             }
-            if departamento:
-                params["departamento"] = departamento
+            if department:
+                params["department"] = department
                 
             response = httpx.get(
                 f"{DOCUMENTS_SERVICE_URL}/search/",
@@ -41,16 +41,16 @@ class SearchDocumentsTool(BaseTool):
 
 class GetDocumentsTool(BaseTool):
     name: str = "Get Documents"
-    description: str = "List documents for a company. Use this to browse available documents by type or department. Input: company_id (required), type (optional), departamento (optional)"
+    description: str = "List documents for a company. Use this to browse available documents by type or department. Input: company_id (required), type (optional), department (optional)"
     
-    def _run(self, company_id: str, type: str = "", departamento: str = "") -> str:
+    def _run(self, company_id: str, document_type: str = "", department: str = "") -> str:
         """Execute the tool."""
         try:
             params = {"company_id": company_id, "limit": 50}
-            if type:
-                params["type"] = type
-            if departamento:
-                params["departamento"] = departamento
+            if document_type:
+                params["document_type"] = document_type
+            if department:
+                params["department"] = department
                 
             response = httpx.get(
                 f"{DOCUMENTS_SERVICE_URL}/",

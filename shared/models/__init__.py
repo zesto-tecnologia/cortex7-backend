@@ -15,7 +15,7 @@ from shared.models.financial import (
     CardTransaction,
 )
 from shared.models.hr import Employee, EmploymentContract
-from shared.models.legal import Contract, LegalProcess
+from shared.models.legal import Contract, Lawsuit
 from shared.models.procurement import PurchaseOrder
 from shared.models.workflow import CorporateWorkflow, Task
 from shared.models.audit import AgentLog, AuditTrail, EmbeddingCache, AgentConfig
@@ -40,7 +40,7 @@ __all__ = [
     "EmploymentContract",
     # Legal
     "Contract",
-    "LegalProcess",
+    "Lawsuit",
     # Procurement
     "PurchaseOrder",
     # Workflow

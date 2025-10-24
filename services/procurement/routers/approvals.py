@@ -24,29 +24,29 @@ async def get_workflow_config():
             {
                 "level": 1,
                 "name": "Supervisor",
-                "min_limit": 0,
-                "max_limit": 10000,
+                "min_amount": 0,
+                "max_amount": 10000,
                 "authority_required": "supervisor"
             },
             {
                 "level": 2,
                 "name": "Manager",
-                "min_limit": 10001,
-                "max_limit": 50000,
+                "min_amount": 10001,
+                "max_amount": 50000,
                 "authority_required": "manager"
             },
             {
                 "level": 3,
                 "name": "Director",
-                "min_limit": 50001,
-                "max_limit": 200000,
+                "min_amount": 50001,
+                "max_amount": 200000,
                 "authority_required": "director"
             },
             {
                 "level": 4,
                 "name": "President",
-                "min_limit": 200001,
-                "max_limit": None,
+                "min_amount": 200001,
+                "max_amount": None,
                 "authority_required": "president"
             }
         ],
@@ -84,7 +84,7 @@ async def get_pending_approvals(
             and_(
                 PurchaseOrder.company_id == user.company_id,
                 PurchaseOrder.status == "awaiting_approval",
-                PurchaseOrder.total_value <= procurement_authority
+                PurchaseOrder.total_amount <= procurement_authority
             )
         )
 
@@ -97,7 +97,7 @@ async def get_pending_approvals(
                 "id": order.id,
                 "number": order.number,
                 "description": f"Purchase Order #{order.number}",
-                "value": float(order.total_value),
+                "amount": float(order.total_amount),
                 "requester_id": order.requester_id,
                 "request_date": order.created_at,
                 "priority": "normal"
@@ -202,7 +202,7 @@ async def get_approval_history(
                         "type": "purchase_order",
                         "id": order.id,
                         "number": order.number,
-                        "value": float(order.total_value),
+                        "amount": float(order.total_amount),
                         "approval_date": approval.get("approved_at"),
                         "current_status": order.status
                     })

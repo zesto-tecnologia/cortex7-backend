@@ -16,7 +16,7 @@ from shared.models.hr import Employee
 router = APIRouter()
 
 
-class FeriasRequest(BaseModel):
+class VacationRequest(BaseModel):
     """Vacation request schema."""
     employee_id: UUID
     start_date: date
@@ -24,7 +24,7 @@ class FeriasRequest(BaseModel):
     type: str = "vacations"  # vacations, licenca, abono
 
 
-class FeriasResponse(BaseModel):
+class VacationResponse(BaseModel):
     """Vacation response schema."""
     employee_id: UUID
     periodo_aquisitivo: str
@@ -33,9 +33,9 @@ class FeriasResponse(BaseModel):
     historico: List[dict]
 
 
-@router.post("/solicitar")
-async def solicitar_ferias(
-    request: FeriasRequest,
+@router.post("/request")
+async def request_vacation(
+    request: VacationRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Request vacation days."""
@@ -53,14 +53,14 @@ async def solicitar_ferias(
 
     # Check available days
     if not employee.vacations:
-        employee.vacations = {"history": [], "dias_disponiveis": 30}
+        employee.vacations = {"history": [], "available_days": 30}
 
-    dias_disponiveis = employee.vacations.get("dias_disponiveis", 30)
+    available_days = employee.vacations.get("available_days", 30)
 
-    if days_requested > dias_disponiveis:
+    if days_requested > available_days:
         raise HTTPException(
             status_code=400,
-            detail=f"Insufficient vacation days. Available: {dias_disponiveis}"
+            detail=f"Insufficient vacation days. Available: {available_days}"
         )
 
     # Register vacation request
@@ -74,19 +74,19 @@ async def solicitar_ferias(
     }
 
     employee.vacations["history"].append(novo_periodo)
-    employee.vacations["dias_disponiveis"] = dias_disponiveis - days_requested
+    employee.vacations["available_days"] = available_days - days_requested
 
     await db.commit()
 
     return {
         "message": "Vacation request approved",
         "days_requested": days_requested,
-        "dias_restantes": employee.vacations["dias_disponiveis"]
+        "remaining_days": employee.vacations["available_days"]
     }
 
 
-@router.get("/employee/{employee_id}", response_model=FeriasResponse)
-async def get_ferias_funcionario(
+@router.get("/employee/{employee_id}", response_model=VacationResponse)
+async def get_vacation(
     employee_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
@@ -100,34 +100,34 @@ async def get_ferias_funcionario(
         raise HTTPException(status_code=404, detail="Employee not found")
 
     if not employee.vacations:
-        employee.vacations = {"history": [], "dias_disponiveis": 30}
+        employee.vacations = {"history": [], "available_days": 30}
 
     # Calculate acquisition period
     from datetime import datetime
 
-    if employee.admission_date:
-        period_start = employee.admission_date
-        periodo_fim = period_start + timedelta(days=365)
-        periodo_aquisitivo = f"{period_start} - {periodo_fim}"
+    if employee.hire_date:
+        period_start = employee.hire_date
+        period_end = period_start + timedelta(days=365)
+        acquisition_period = f"{period_start} - {period_end}"
     else:
-        periodo_aquisitivo = "Not defined"
+        acquisition_period = "Not defined"
 
-    dias_utilizados = sum(
-        periodo.get("dias", 0)
-        for periodo in employee.vacations.get("history", [])
+    used_days = sum(
+        vacation.get("days", 0)
+        for vacation in employee.vacations.get("history", [])
     )
 
-    return FeriasResponse(
+    return VacationResponse(
         employee_id=employee_id,
-        periodo_aquisitivo=periodo_aquisitivo,
-        dias_disponiveis=employee.vacations.get("dias_disponiveis", 30),
-        dias_utilizados=dias_utilizados,
-        historico=employee.vacations.get("history", [])
+        acquisition_period=acquisition_period,
+        available_days=employee.vacations.get("available_days", 30),
+        used_days=used_days,
+        history=employee.vacations.get("history", [])
     )
 
 
 @router.get("/calendar/{company_id}")
-async def get_calendario_ferias(
+async def get_vacation_calendar(
     company_id: UUID,
     ano: int = 2025,
     db: AsyncSession = Depends(get_db),
@@ -135,30 +135,30 @@ async def get_calendario_ferias(
     """Get vacation calendar for the company."""
     query = select(Employee).where(
         Employee.company_id == company_id,
-        Employee.status == "ativo"
+        Employee.status == "active"
     )
 
     result = await db.execute(query)
-    funcionarios = result.scalars().all()
+    employees = result.scalars().all()
 
-    calendario = []
-    for func in funcionarios:
-        if func.vacations and func.vacations.get("history"):
-            for periodo in func.vacations["history"]:
+    calendar = []
+    for employee in employees:
+        if employee.vacations and employee.vacations.get("history"):
+            for vacation in employee.vacations["history"]:
                 # Filter by year
-                if periodo.get("start_date", "").startswith(str(ano)):
-                    calendario.append({
-                        "employee_id": func.id,
-                        "funcionario_cpf": func.cpf,
-                        "cargo": func.cargo,
-                        "start_date": periodo.get("start_date"),
-                        "end_date": periodo.get("end_date"),
-                        "dias": periodo.get("dias"),
-                        "type": periodo.get("type", "vacations"),
-                        "status": periodo.get("status", "approved")
+                if vacation.get("start_date", "").startswith(str(ano)):
+                    calendar.append({
+                        "employee_id": employee.id,
+                        "employee_cpf": employee.cpf,
+                        "position": employee.position,
+                        "start_date": vacation.get("start_date"),
+                        "end_date": vacation.get("end_date"),
+                        "days": vacation.get("days"),
+                        "type": vacation.get("type", "vacations"),
+                        "status": vacation.get("status", "approved")
                     })
 
     # Sort by start date
-    calendario.sort(key=lambda x: x.get("start_date", ""))
+    calendar.sort(key=lambda x: x.get("start_date", ""))
 
-    return calendario
+    return calendar

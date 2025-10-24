@@ -30,7 +30,7 @@ class Company(Base, BaseModelMixin):
     card_transactions = relationship("CardTransaction", back_populates="company", cascade="all, delete-orphan")
     employees = relationship("Employee", back_populates="company", cascade="all, delete-orphan")
     contracts = relationship("Contract", back_populates="company", cascade="all, delete-orphan")
-    legal_processes = relationship("LegalProcess", back_populates="company", cascade="all, delete-orphan")
+    lawsuits = relationship("Lawsuit", back_populates="company", cascade="all, delete-orphan")
     purchase_orders = relationship("PurchaseOrder", back_populates="company", cascade="all, delete-orphan")
     workflows = relationship("CorporateWorkflow", back_populates="company", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="company", cascade="all, delete-orphan")

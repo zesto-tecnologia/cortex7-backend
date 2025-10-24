@@ -41,7 +41,7 @@ class WorkflowResponse(BaseModel):
         from_attributes = True
 
 
-class TarefaCreate(BaseModel):
+class TaskCreate(BaseModel):
     """Schema for creating a task."""
     company_id: UUID
     title: str = Field(..., max_length=255)
@@ -53,7 +53,7 @@ class TarefaCreate(BaseModel):
     due_date: Optional[str] = None
 
 
-class TarefaUpdate(BaseModel):
+class TaskUpdate(BaseModel):
     """Schema for updating a task."""
     title: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
@@ -64,7 +64,7 @@ class TarefaUpdate(BaseModel):
     due_date: Optional[str] = None
 
 
-class TarefaResponse(BaseModel):
+class TaskResponse(BaseModel):
     """Schema for task response."""
     id: UUID
     company_id: UUID

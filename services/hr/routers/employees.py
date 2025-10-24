@@ -22,12 +22,12 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[EmployeeResponse])
-async def list_funcionarios(
+async def list_employees(
     company_id: UUID,
-    departamento_id: Optional[UUID] = None,
-    status: Optional[str] = "ativo",
-    cargo: Optional[str] = None,
-    tipo_contrato: Optional[str] = None,
+    department_id: Optional[UUID] = None,
+    status: Optional[str] = "active",
+    position: Optional[str] = None,
+    contract_type: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
@@ -38,14 +38,14 @@ async def list_funcionarios(
         Employee.status == status
     )
 
-    if departamento_id:
-        query = query.where(Employee.departamento_id == departamento_id)
+    if department_id:
+        query = query.where(Employee.department_id == department_id)
 
-    if cargo:
-        query = query.where(Employee.cargo.ilike(f"%{cargo}%"))
+    if position:
+        query = query.where(Employee.position.ilike(f"%{position}%"))
 
-    if tipo_contrato:
-        query = query.where(Employee.tipo_contrato == tipo_contrato)
+    if contract_type:
+        query = query.where(Employee.contract_type == contract_type)
 
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
@@ -53,7 +53,7 @@ async def list_funcionarios(
 
 
 @router.get("/search")
-async def search_funcionarios(
+async def search_employees(
     company_id: UUID,
     q: str,
     db: AsyncSession = Depends(get_db),
@@ -72,7 +72,7 @@ async def search_funcionarios(
 
 
 @router.get("/{employee_id}", response_model=EmployeeWithContracts)
-async def get_funcionario(
+async def get_employee(
     employee_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
@@ -80,9 +80,9 @@ async def get_funcionario(
     from sqlalchemy.orm import selectinload
 
     query = select(Employee).options(
-        selectinload(Employee.contratos_trabalho),
+        selectinload(Employee.employment_contracts),
         selectinload(Employee.user),
-        selectinload(Employee.departamento)
+        selectinload(Employee.department)
     ).where(Employee.id == employee_id)
 
     result = await db.execute(query)
@@ -95,7 +95,7 @@ async def get_funcionario(
 
 
 @router.post("/", response_model=EmployeeResponse)
-async def create_funcionario(
+async def create_employee(
     employee: EmployeeCreate,
     db: AsyncSession = Depends(get_db),
 ):
@@ -107,17 +107,17 @@ async def create_funcionario(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="CPF already registered")
 
-    db_funcionario = Employee(**employee.dict())
-    db.add(db_funcionario)
+    db_employee = Employee(**employee.dict())
+    db.add(db_employee)
     await db.commit()
-    await db.refresh(db_funcionario)
-    return db_funcionario
+    await db.refresh(db_employee)
+    return db_employee
 
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
-async def update_funcionario(
+async def update_employee(
     employee_id: UUID,
-    funcionario_update: EmployeeUpdate,
+    employee_update: EmployeeUpdate,
     db: AsyncSession = Depends(get_db),
 ):
     """Update an employee."""
@@ -129,7 +129,7 @@ async def update_funcionario(
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    for field, value in funcionario_update.dict(exclude_unset=True).items():
+    for field, value in employee_update.dict(exclude_unset=True).items():
         setattr(employee, field, value)
 
     await db.commit()
@@ -137,8 +137,8 @@ async def update_funcionario(
     return employee
 
 
-@router.post("/{employee_id}/demissao")
-async def registrar_demissao(
+@router.post("/{employee_id}/termination")
+async def register_termination(
     employee_id: UUID,
     termination_date: date,
     db: AsyncSession = Depends(get_db),
@@ -160,8 +160,8 @@ async def registrar_demissao(
     return {"message": "Termination registered successfully"}
 
 
-@router.get("/{employee_id}/vacations-disponiveis")
-async def get_ferias_disponiveis(
+@router.get("/{employee_id}/available-vacations")
+async def get_available_vacations(
     employee_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
@@ -177,9 +177,9 @@ async def get_ferias_disponiveis(
     # Calculate vacation days based on employment time
     from datetime import datetime
 
-    if employee.admission_date:
+    if employee.hire_date:
         months_employed = (
-            (datetime.now().date() - employee.admission_date).days / 30
+            (datetime.now().date() - employee.hire_date).days / 30
         )
         vacation_periods = int(months_employed / 12)
         available_days = vacation_periods * 30  # 30 days per year in Brazil
@@ -187,16 +187,23 @@ async def get_ferias_disponiveis(
         # Subtract used vacation days from vacations JSON field
         used_days = 0
         if employee.vacations:
-            for periodo in employee.vacations.get("history", []):
-                used_days += periodo.get("dias", 0)
+            for vacation in employee.vacations.get("history", []):
+                used_days += vacation.get("days", 0)
 
         return {
             "employee_id": employee_id,
             "months_employed": int(months_employed),
             "vacation_periods": vacation_periods,
-            "total_earned_days": available_days,
+            "available_days": available_days,
             "used_days": used_days,
-            "available_days": available_days - used_days
+            "remaining_days": available_days - used_days
         }
 
-    return {"available_days": 0}
+    return {
+        "employee_id": employee_id,
+        "months_employed": 0,
+        "vacation_periods": 0,
+        "available_days": 0,
+        "used_days": 0,
+        "remaining_days": 0
+    }

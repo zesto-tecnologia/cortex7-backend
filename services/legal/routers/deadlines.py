@@ -5,12 +5,12 @@ Prazos e Alertas (Deadlines and Alerts) router.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
-from typing import List, Optional
+from typing import Optional
 from datetime import date, timedelta
 from uuid import UUID
 
 from shared.database.connection import get_db
-from shared.models.legal import Contract, LegalProcess as Lawsuit
+from shared.models.legal import Contract, Lawsuit
 
 router = APIRouter()
 
@@ -26,69 +26,68 @@ async def get_all_deadlines(
     deadlines = []
 
     # Contract deadlines
-    contratos_query = select(Contract).where(
+    contracts_query = select(Contract).where(
         and_(
             Contract.company_id == company_id,
-            Contract.status == "vigente",
+            Contract.status == "active",
             Contract.end_date != None,
             Contract.end_date <= deadline_date
         )
     )
-    contratos_result = await db.execute(contratos_query)
-    contracts = contratos_result.scalars().all()
+    contracts_result = await db.execute(contracts_query)
+    contracts = contracts_result.scalars().all()
 
     for contract in contracts:
-        dias_restantes = (contract.end_date - date.today()).days
+        days_remaining = (contract.end_date - date.today()).days
 
         deadlines.append({
-            "type": "contrato_vencimento",
+            "type": "contract_expiration",
             "entidade_id": contract.id,
-            "description": f"Vencimento contract: {contract.opposing_party}",
+            "description": f"Contract expiration: {contract.opposing_party}",
             "date": contract.end_date,
-            "dias_restantes": dias_restantes,
-            "prioridade": "alta" if dias_restantes <= 15 else "media",
-            "renovacao_automatica": contract.renovacao_automatica
+            "days_remaining": days_remaining,
+            "priority": "high" if days_remaining <= 15 else "medium",
+            "auto_renewal": contract.auto_renewal
         })
 
         # Contract critical deadlines
-        if contract.prazos_importantes:
-            for deadline in contract.prazos_importantes:
-                prazo_data = date.fromisoformat(deadline["date"])
-                if prazo_data <= deadline_date:
-                    dias_restantes = (prazo_data - date.today()).days
-                    deadlines.append({
-                        "type": "contrato_prazo_critico",
-                        "entidade_id": contract.id,
-                        "description": deadline["description"],
-                        "date": prazo_data,
-                        "dias_restantes": dias_restantes,
-                        "prioridade": "alta" if dias_restantes <= 7 else "media",
-                        "notificado": deadline.get("notificado", False)
-                    })
+        if contract.important_dates:
+            for deadline in contract.important_dates:
+                deadline_date = date.fromisoformat(deadline["date"])
+                days_remaining = (deadline_date - date.today()).days
+                deadlines.append({
+                    "type": "important_date",
+                    "entity_id": contract.id,
+                    "description": deadline["description"],
+                    "date": deadline_date,
+                    "days_remaining": days_remaining,
+                    "priority": "high" if days_remaining <= 7 else "medium",
+                    "notified": deadline.get("notified", False)
+                })
 
     # Legal process deadlines
-    processos_query = select(Lawsuit).where(
+    lawsuits_query = select(Lawsuit).where(
         and_(
             Lawsuit.company_id == company_id,
-            Lawsuit.status == "andamento",
+            Lawsuit.status == "active",
             Lawsuit.next_action != None,
             Lawsuit.next_action <= deadline_date
         )
     )
-    processos_result = await db.execute(processos_query)
-    lawsuits = processos_result.scalars().all()
+    lawsuits_result = await db.execute(lawsuits_query)
+    lawsuits = lawsuits_result.scalars().all()
 
     for lawsuit in lawsuits:
-        dias_restantes = (lawsuit.next_action - date.today()).days
+        days_remaining = (lawsuit.next_action - date.today()).days
 
         deadlines.append({
-            "type": "processo_acao",
-            "entidade_id": lawsuit.id,
-            "description": lawsuit.next_action_description or f"Ação lawsuit: {lawsuit.lawsuit_number}",
+            "type": "lawsuit_action",
+            "entity_id": lawsuit.id,
+            "description": lawsuit.next_action_description or f"Lawsuit action: {lawsuit.lawsuit_number}",
             "date": lawsuit.next_action,
-            "dias_restantes": dias_restantes,
-            "prioridade": "critica" if dias_restantes <= 3 else "alta" if dias_restantes <= 7 else "media",
-            "risco_processo": lawsuit.risco
+            "days_remaining": days_remaining,
+            "priority": "critical" if days_remaining <= 3 else "high" if days_remaining <= 7 else "medium",
+            "risk": lawsuit.risk
         })
 
     # Sort by date
@@ -98,72 +97,70 @@ async def get_all_deadlines(
 
 
 @router.get("/critical/{company_id}")
-async def get_prazos_criticos(
+async def get_critical_deadlines(
     company_id: UUID,
-    db: AsyncSession = Depends(get_db),
 ):
     """Get critical deadlines (next 7 days)."""
-    prazos_todos = await get_all_deadlines(company_id, days_limit=7, db=db)
+    deadlines = await get_all_deadlines(company_id, days_limit=7)
 
     # Filter only high priority
-    prazos_criticos = [
-        p for p in prazos_todos
-        if p["prioridade"] in ["critica", "alta"]
+    critical_deadlines = [
+        d for d in deadlines
+        if d["priority"] in ["critical", "high"]
     ]
 
     return {
-        "total_criticos": len(prazos_criticos),
-        "deadlines": prazos_criticos
+        "total_critical": len(critical_deadlines),
+        "deadlines": critical_deadlines
     }
 
 
 @router.get("/calendar/{company_id}")
-async def get_calendario_prazos(
+async def get_deadline_calendar(
     company_id: UUID,
-    ano: int = 2025,
-    mes: Optional[int] = None,
-    db: AsyncSession = Depends(get_db),
+    year: int = 2025,
+    month: Optional[int] = None,
 ):
     """Get deadline calendar."""
     import calendar
 
     # Define date range
-    if mes:
-        start_date = date(ano, mes, 1)
-        end_date = date(ano, mes, calendar.monthrange(ano, mes)[1])
+    if month:
+        start_date = date(year, month, 1)
+        end_date = date(year, month, calendar.monthrange(year, month)[1])
     else:
-        start_date = date(ano, 1, 1)
-        end_date = date(ano, 12, 31)
+        start_date = date(year, 1, 1)
+        end_date = date(year, 12, 31)
 
     # Get all deadlines for the period
-    prazos_todos = await get_all_deadlines(company_id, days_limit=365, db=db)
+    deadlines = await get_all_deadlines(company_id, days_limit=365)
 
     # Filter by date range
-    calendario = {}
-    for deadline in prazos_todos:
+    calendar = {}
+    for deadline in deadlines:
         if start_date <= deadline["date"] <= end_date:
-            data_str = str(deadline["date"])
-            if data_str not in calendario:
-                calendario[data_str] = []
-            calendario[data_str].append(deadline)
+            date_str = str(deadline["date"])
+            if date_str not in calendar:
+                calendar[date_str] = []
+            calendar[date_str].append(deadline)
 
-    return calendario
+    return calendar
 
 
-@router.post("/marcar-notificado/{company_id}")
-async def marcar_prazo_notificado(
+@router.post("/mark-notified/{company_id}")
+async def mark_deadline_notified(
     company_id: UUID,
-    tipo_entidade: str,  # "contract" or "lawsuit"
-    entidade_id: UUID,
+    entity_type: str,  # "contract" or "lawsuit"
+    entity_id: UUID,
     deadline_description: str,
     db: AsyncSession = Depends(get_db),
 ):
     """Mark a deadline as notified."""
-    if tipo_entidade == "contract":
+    if entity_type == "contract":
         result = await db.execute(
             select(Contract).where(
                 and_(
-                    Contract.id == entidade_id,
+                    Contract.id == entity_id,
                     Contract.company_id == company_id
                 )
             )
@@ -173,14 +170,33 @@ async def marcar_prazo_notificado(
         if not contract:
             raise HTTPException(status_code=404, detail="Contract not found")
 
-        if contract.prazos_importantes:
-            for deadline in contract.prazos_importantes:
+        if contract.important_dates:
+            for deadline in contract.important_dates:
                 if deadline["description"] == deadline_description:
-                    deadline["notificado"] = True
+                    deadline["notified"] = True
                     break
 
         await db.commit()
         return {"message": "Deadline marked as notified"}
 
-    else:
-        raise HTTPException(status_code=400, detail="Invalid entity type")
+    elif entity_type == "lawsuit":
+        result = await db.execute(
+            select(Lawsuit).where(
+                and_(
+                    Lawsuit.id == entity_id,
+                    Lawsuit.company_id == company_id
+                )
+            )
+        )
+        lawsuit = result.scalar_one_or_none()
+
+        if not lawsuit:
+            raise HTTPException(status_code=404, detail="Lawsuit not found")
+
+        if lawsuit.important_dates:
+            for deadline in lawsuit.important_dates:
+                if deadline["description"] == deadline_description:
+                    deadline["notified"] = True
+                    break
+
+        await db.commit()

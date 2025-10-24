@@ -2,7 +2,7 @@
 Cartões Corporativos router.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from shared.database.connection import get_db
 
