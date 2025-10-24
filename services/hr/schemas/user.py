@@ -8,10 +8,10 @@ from datetime import datetime
 from uuid import UUID
 
 
-class UsuarioBase(BaseModel):
+class UserBase(BaseModel):
     """Base schema for User."""
 
-    empresa_id: UUID
+    company_id: UUID
     departamento_id: Optional[UUID] = None
     nome: str = Field(..., max_length=255)
     email: EmailStr
@@ -20,12 +20,12 @@ class UsuarioBase(BaseModel):
     status: str = Field(default="ativo", max_length=20)
 
 
-class UsuarioCreate(UsuarioBase):
+class UserCreate(UserBase):
     """Schema for creating a User."""
     pass
 
 
-class UsuarioUpdate(BaseModel):
+class UserUpdate(BaseModel):
     """Schema for updating a User."""
 
     departamento_id: Optional[UUID] = None
@@ -36,7 +36,7 @@ class UsuarioUpdate(BaseModel):
     status: Optional[str] = Field(None, max_length=20)
 
 
-class UsuarioResponse(UsuarioBase):
+class UserResponse(UserBase):
     """Schema for User response."""
 
     id: UUID

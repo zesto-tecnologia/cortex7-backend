@@ -1,5 +1,5 @@
 """
-Pydantic schemas for Contratos de Trabalho (Employment Contracts).
+Pydantic schemas for Contracts de Trabalho (Employment Contracts).
 """
 
 from pydantic import BaseModel, Field
@@ -8,12 +8,12 @@ from datetime import date, datetime
 from uuid import UUID
 
 
-class ContratoTrabalhoBase(BaseModel):
+class EmploymentContractBase(BaseModel):
     """Base schema for Employment Contract."""
 
     funcionario_id: UUID
-    documento_id: Optional[UUID] = None
-    tipo: str = Field(..., max_length=20)  # admissao, alteracao, rescisao
+    document_id: Optional[UUID] = None
+    type: str = Field(..., max_length=20)  # admissao, alteracao, rescisao
     data_inicio: date
     data_fim: Optional[date] = None
     conteudo: Optional[str] = None
@@ -23,16 +23,16 @@ class ContratoTrabalhoBase(BaseModel):
     assinatura_empresa_data: Optional[datetime] = None
 
 
-class ContratoTrabalhoCreate(ContratoTrabalhoBase):
+class EmploymentContractCreate(EmploymentContractBase):
     """Schema for creating an Employment Contract."""
     pass
 
 
-class ContratoTrabalhoUpdate(BaseModel):
+class EmploymentContractUpdate(BaseModel):
     """Schema for updating an Employment Contract."""
 
-    documento_id: Optional[UUID] = None
-    tipo: Optional[str] = Field(None, max_length=20)
+    document_id: Optional[UUID] = None
+    type: Optional[str] = Field(None, max_length=20)
     data_inicio: Optional[date] = None
     data_fim: Optional[date] = None
     conteudo: Optional[str] = None
@@ -40,7 +40,7 @@ class ContratoTrabalhoUpdate(BaseModel):
     assinado: Optional[bool] = None
 
 
-class ContratoTrabalhoResponse(ContratoTrabalhoBase):
+class EmploymentContractResponse(EmploymentContractBase):
     """Schema for Employment Contract response."""
 
     id: UUID

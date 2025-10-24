@@ -50,12 +50,12 @@ async def health_check():
 
 
 # Import routers
-from services.legal.routers import contratos, processos, prazos
+from services.legal.routers import contracts, lawsuits, deadlines
 
 # Include routers
-app.include_router(contratos.router, prefix="/contratos", tags=["Contratos"])
-app.include_router(processos.router, prefix="/processos", tags=["Processos Jurídicos"])
-app.include_router(prazos.router, prefix="/prazos", tags=["Prazos e Alertas"])
+app.include_router(contracts.router, prefix="/contracts", tags=["Contracts"])
+app.include_router(lawsuits.router, prefix="/lawsuits", tags=["Legal Processes"])
+app.include_router(deadlines.router, prefix="/deadlines", tags=["Deadlines & Alerts"])
 
 
 if __name__ == "__main__":

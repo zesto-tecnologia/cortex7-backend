@@ -9,7 +9,7 @@ from typing import List
 from uuid import UUID
 
 from shared.database.connection import get_db
-from shared.models.auditoria import CacheEmbedding
+from shared.models.audit import EmbeddingCache as CacheEmbedding
 from services.documents.services.embedding_service import EmbeddingService
 from services.documents.schemas.embedding import (
     EmbeddingRequest,
@@ -42,7 +42,7 @@ async def generate_embedding(
             return EmbeddingResponse(
                 text=request.text,
                 embedding=cached.embedding.tolist(),
-                model=cached.modelo,
+                model=cached.model,
                 cached=True
             )
 
@@ -94,7 +94,7 @@ async def generate_batch_embeddings(
                 results.append(EmbeddingResponse(
                     text=text,
                     embedding=cached.embedding.tolist(),
-                    model=cached.modelo,
+                    model=cached.model,
                     cached=True
                 ))
             else:
@@ -103,10 +103,10 @@ async def generate_batch_embeddings(
 
                 # Cache it
                 cache_entry = CacheEmbedding(
-                    texto=text[:1000],
+                    text=text[:1000],
                     hash=text_hash,
                     embedding=embedding,
-                    modelo=request.model or "text-embedding-ada-002"
+                    model=request.model or "text-embedding-ada-002"
                 )
                 db.add(cache_entry)
 
@@ -132,23 +132,23 @@ async def regenerate_document_embedding(
     """
     Regenerate embedding for a specific document.
     """
-    from shared.models.documento import Documento
+    from shared.models.document import Document
 
     result = await db.execute(
-        select(Documento).where(Documento.id == document_id)
+        select(Document).where(Document.id == document_id)
     )
     document = result.scalar_one_or_none()
 
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if not document.conteudo_original:
+    if not document.original_content:
         raise HTTPException(status_code=400, detail="Document has no content to embed")
 
     try:
         # Generate new embedding
         new_embedding = await embedding_service.generate_embedding(
-            document.conteudo_original
+            document.original_content
         )
 
         document.embedding = new_embedding

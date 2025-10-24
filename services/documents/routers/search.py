@@ -37,15 +37,15 @@ async def semantic_search(
         sql = text("""
             SELECT
                 id,
-                titulo,
+                title,
                 departamento,
-                tipo,
+                type,
                 conteudo_original,
                 metadata,
-                arquivo_url,
+                file_url,
                 1 - (embedding <=> :embedding::vector) as similarity
-            FROM documentos
-            WHERE empresa_id = :empresa_id
+            FROM documents
+            WHERE company_id = :company_id
                 AND status = 'ativo'
                 AND embedding IS NOT NULL
                 {:departamento_filter}
@@ -54,19 +54,19 @@ async def semantic_search(
             LIMIT :limit
         """.format(
             departamento_filter="AND departamento = :departamento" if query.departamento else "",
-            tipo_filter="AND tipo = :tipo" if query.tipo else ""
+            tipo_filter="AND type = :type" if query.type else ""
         ))
 
         params = {
             "embedding": str(query_embedding),
-            "empresa_id": str(query.empresa_id),
+            "company_id": str(query.company_id),
             "limit": query.limit or 10
         }
 
         if query.departamento:
             params["departamento"] = query.departamento
-        if query.tipo:
-            params["tipo"] = query.tipo
+        if query.type:
+            params["type"] = query.type
 
         result = await db.execute(sql, params)
         rows = result.fetchall()
@@ -80,13 +80,13 @@ async def semantic_search(
 
             search_results.append(SearchResult(
                 id=row.id,
-                titulo=row.titulo,
+                title=row.title,
                 departamento=row.departamento,
-                tipo=row.tipo,
+                type=row.type,
                 conteudo_preview=row.conteudo_original[:500] if row.conteudo_original else None,
                 similarity_score=float(row.similarity),
                 metadata=row.metadata,
-                arquivo_url=row.arquivo_url
+                file_url=row.file_url
             ))
 
         return search_results
@@ -107,7 +107,7 @@ async def find_similar_documents(
         # Get the source document's embedding
         source_doc_sql = text("""
             SELECT embedding
-            FROM documentos
+            FROM documents
             WHERE id = :document_id
         """)
 
@@ -121,16 +121,16 @@ async def find_similar_documents(
         sql = text("""
             SELECT
                 id,
-                titulo,
+                title,
                 departamento,
-                tipo,
+                type,
                 conteudo_original,
                 metadata,
-                arquivo_url,
+                file_url,
                 1 - (embedding <=> :embedding::vector) as similarity
-            FROM documentos
+            FROM documents
             WHERE id != :document_id
-                AND empresa_id = :empresa_id
+                AND company_id = :company_id
                 AND status = 'ativo'
                 AND embedding IS NOT NULL
             ORDER BY embedding <=> :embedding::vector
@@ -140,7 +140,7 @@ async def find_similar_documents(
         params = {
             "embedding": str(row.embedding),
             "document_id": str(query.document_id),
-            "empresa_id": str(query.empresa_id),
+            "company_id": str(query.company_id),
             "limit": query.limit or 5
         }
 
@@ -152,13 +152,13 @@ async def find_similar_documents(
         for row in rows:
             search_results.append(SearchResult(
                 id=row.id,
-                titulo=row.titulo,
+                title=row.title,
                 departamento=row.departamento,
-                tipo=row.tipo,
+                type=row.type,
                 conteudo_preview=row.conteudo_original[:500] if row.conteudo_original else None,
                 similarity_score=float(row.similarity),
                 metadata=row.metadata,
-                arquivo_url=row.arquivo_url
+                file_url=row.file_url
             ))
 
         return search_results
@@ -171,7 +171,7 @@ async def find_similar_documents(
 
 @router.get("/by-metadata")
 async def search_by_metadata(
-    empresa_id: UUID,
+    company_id: UUID,
     key: str,
     value: str,
     db: AsyncSession = Depends(get_db),
@@ -180,9 +180,9 @@ async def search_by_metadata(
     Search documents by metadata key-value pairs.
     """
     sql = text("""
-        SELECT id, titulo, departamento, tipo, metadata, arquivo_url
-        FROM documentos
-        WHERE empresa_id = :empresa_id
+        SELECT id, title, departamento, type, metadata, file_url
+        FROM documents
+        WHERE company_id = :company_id
             AND status = 'ativo'
             AND metadata @> :search_json::jsonb
         LIMIT 100
@@ -191,7 +191,7 @@ async def search_by_metadata(
     search_json = json.dumps({key: value})
 
     result = await db.execute(sql, {
-        "empresa_id": str(empresa_id),
+        "company_id": str(company_id),
         "search_json": search_json
     })
 
@@ -200,11 +200,11 @@ async def search_by_metadata(
     return [
         {
             "id": row.id,
-            "titulo": row.titulo,
+            "title": row.title,
             "departamento": row.departamento,
-            "tipo": row.tipo,
+            "type": row.type,
             "metadata": row.metadata,
-            "arquivo_url": row.arquivo_url
+            "file_url": row.file_url
         }
         for row in rows
     ]

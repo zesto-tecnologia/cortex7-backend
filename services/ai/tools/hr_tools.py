@@ -13,12 +13,12 @@ HR_SERVICE_URL = "http://hr-service:8003"
 
 class GetFuncionariosTool(BaseTool):
     name: str = "Get Funcionarios"
-    description: str = "Get employees (funcionários) for a company. Use this to check employee information, department assignments, and staff details. Input: empresa_id (required), departamento (optional)"
+    description: str = "Get employees (funcionários) for a company. Use this to check employee information, department assignments, and staff details. Input: company_id (required), departamento (optional)"
     
-    def _run(self, empresa_id: str, departamento: str = "") -> str:
+    def _run(self, company_id: str, departamento: str = "") -> str:
         """Execute the tool."""
         try:
-            params = {"empresa_id": empresa_id, "limit": 100}
+            params = {"company_id": company_id, "limit": 100}
             if departamento:
                 params["departamento"] = departamento
                 
@@ -28,8 +28,8 @@ class GetFuncionariosTool(BaseTool):
                 timeout=10.0
             )
             response.raise_for_status()
-            data = response.json()
-            return f"Successfully retrieved {len(data)} employees. Data: {data}"
+            date = response.json()
+            return f"Successfully retrieved {len(date)} employees. Data: {date}"
         except Exception as e:
             logger.error(f"Error calling HR service: {e}")
             return f"Error retrieving employees: {str(e)}"
@@ -47,11 +47,11 @@ class GetFeriasTool(BaseTool):
                 timeout=10.0
             )
             response.raise_for_status()
-            data = response.json()
-            return f"Successfully retrieved vacation data for employee. Available days: {data.get('dias_disponiveis', 'N/A')}, Used days: {data.get('dias_utilizados', 'N/A')}. Full data: {data}"
+            date = response.json()
+            return f"Successfully retrieved vacation date for employee. Available days: {date.get('dias_disponiveis', 'N/A')}, Used days: {date.get('dias_utilizados', 'N/A')}. Full date: {date}"
         except Exception as e:
             logger.error(f"Error calling HR service: {e}")
-            return f"Error retrieving vacation data: {str(e)}"
+            return f"Error retrieving vacation date: {str(e)}"
 
 
 class GetContratosTool(BaseTool):
@@ -66,10 +66,10 @@ class GetContratosTool(BaseTool):
                 timeout=10.0
             )
             response.raise_for_status()
-            data = response.json()
-            if not data:
+            date = response.json()
+            if not date:
                 return f"No contracts found for employee {funcionario_id}"
-            return f"Successfully retrieved {len(data)} employment contract(s) for employee. Data: {data}"
+            return f"Successfully retrieved {len(date)} employment contract(s) for employee. Data: {date}"
         except Exception as e:
             logger.error(f"Error calling HR service: {e}")
             return f"Error retrieving contracts: {str(e)}"

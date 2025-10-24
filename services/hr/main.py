@@ -52,13 +52,13 @@ async def health_check():
 
 
 # Import routers
-from services.hr.routers import funcionarios, contratos, ferias, beneficios
+from services.hr.routers import employees, contracts, vacations, benefits
 
 # Include routers
-app.include_router(funcionarios.router, prefix="/funcionarios", tags=["Funcionários"])
-app.include_router(contratos.router, prefix="/contratos", tags=["Contratos de Trabalho"])
-app.include_router(ferias.router, prefix="/ferias", tags=["Férias"])
-app.include_router(beneficios.router, prefix="/beneficios", tags=["Benefícios"])
+app.include_router(employees.router, prefix="/employees", tags=["Employees"])
+app.include_router(contracts.router, prefix="/contracts", tags=["Employment Contracts"])
+app.include_router(vacations.router, prefix="/vacations", tags=["Vacations"])
+app.include_router(benefits.router, prefix="/benefits", tags=["Benefits"])
 
 
 if __name__ == "__main__":

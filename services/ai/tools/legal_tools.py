@@ -13,21 +13,21 @@ LEGAL_SERVICE_URL = "http://legal-service:8004"
 
 class GetContratosLegaisTool(BaseTool):
     name: str = "Get Contratos Legais"
-    description: str = "Get legal contracts for a company. Use this to check contract details, terms, obligations, and legal agreements. Input: empresa_id (required UUID string)"
+    description: str = "Get legal contracts for a company. Use this to check contract details, terms, obligations, and legal agreements. Input: company_id (required UUID string)"
     
-    def _run(self, empresa_id: str) -> str:
+    def _run(self, company_id: str) -> str:
         """Execute the tool."""
         try:
             response = httpx.get(
                 f"{LEGAL_SERVICE_URL}/contratos/",
-                params={"empresa_id": empresa_id, "limit": 100},
+                params={"company_id": company_id, "limit": 100},
                 timeout=10.0
             )
             response.raise_for_status()
-            data = response.json()
-            if not data:
-                return f"No legal contracts found for company {empresa_id}"
-            return f"Successfully retrieved {len(data)} legal contract(s). Data: {data}"
+            date = response.json()
+            if not date:
+                return f"No legal contracts found for company {company_id}"
+            return f"Successfully retrieved {len(date)} legal contract(s). Data: {date}"
         except Exception as e:
             logger.error(f"Error calling legal service: {e}")
             return f"Error retrieving legal contracts: {str(e)}"
@@ -35,19 +35,19 @@ class GetContratosLegaisTool(BaseTool):
 
 class GetPrazosLegaisTool(BaseTool):
     name: str = "Get Prazos Legais"
-    description: str = "Get legal deadlines (prazos) for a company. Use this to check upcoming deadlines, critical dates, and legal obligations. Input: empresa_id (required UUID string)"
+    description: str = "Get legal deadlines (deadlines) for a company. Use this to check upcoming deadlines, critical dates, and legal obligations. Input: company_id (required UUID string)"
     
-    def _run(self, empresa_id: str) -> str:
+    def _run(self, company_id: str) -> str:
         """Execute the tool."""
         try:
             response = httpx.get(
-                f"{LEGAL_SERVICE_URL}/prazos/todos/{empresa_id}",
+                f"{LEGAL_SERVICE_URL}/deadlines/todos/{company_id}",
                 timeout=10.0
             )
             response.raise_for_status()
-            data = response.json()
-            total_prazos = data.get('total_prazos', 0)
-            return f"Successfully retrieved {total_prazos} legal deadline(s). Data: {data}"
+            date = response.json()
+            total_deadlines = date.get('total_deadlines', 0)
+            return f"Successfully retrieved {total_deadlines} legal deadline(s). Data: {date}"
         except Exception as e:
             logger.error(f"Error calling legal service: {e}")
             return f"Error retrieving deadlines: {str(e)}"
@@ -55,21 +55,21 @@ class GetPrazosLegaisTool(BaseTool):
 
 class GetProcessosLegaisTool(BaseTool):
     name: str = "Get Processos Legais"
-    description: str = "Get legal processes (lawsuits, litigation) for a company. Use this to check ongoing legal cases, their status, and details. Input: empresa_id (required UUID string)"
+    description: str = "Get legal processes (lawsuits, litigation) for a company. Use this to check ongoing legal cases, their status, and details. Input: company_id (required UUID string)"
     
-    def _run(self, empresa_id: str) -> str:
+    def _run(self, company_id: str) -> str:
         """Execute the tool."""
         try:
             response = httpx.get(
-                f"{LEGAL_SERVICE_URL}/processos/",
-                params={"empresa_id": empresa_id, "limit": 100},
+                f"{LEGAL_SERVICE_URL}/lawsuits/",
+                params={"company_id": company_id, "limit": 100},
                 timeout=10.0
             )
             response.raise_for_status()
-            data = response.json()
-            if not data:
-                return f"No legal processes found for company {empresa_id}"
-            return f"Successfully retrieved {len(data)} legal process(es). Data: {data}"
+            date = response.json()
+            if not date:
+                return f"No legal processes found for company {company_id}"
+            return f"Successfully retrieved {len(date)} legal process(es). Data: {date}"
         except Exception as e:
             logger.error(f"Error calling legal service: {e}")
             return f"Error retrieving legal processes: {str(e)}"

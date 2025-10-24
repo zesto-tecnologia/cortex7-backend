@@ -7,13 +7,13 @@ from ..agents.domain.financial_agent import create_financial_agent
 from ..agents.general.analyst_agent import create_analyst_agent
 
 
-def create_financial_analysis_crew(llm, empresa_id: str, analysis_type: str):
+def create_financial_analysis_crew(llm, company_id: str, analysis_type: str):
     """
     Create a crew for financial analysis workflows.
     
     Args:
         llm: Language model to use
-        empresa_id: Company UUID
+        company_id: Company UUID
         analysis_type: Type of analysis (e.g., 'accounts_payable', 'supplier_analysis', 'cost_centers')
     """
     financial_agent = create_financial_agent(llm)
@@ -24,7 +24,7 @@ def create_financial_analysis_crew(llm, empresa_id: str, analysis_type: str):
     
     if analysis_type == "accounts_payable":
         data_task = Task(
-            description=f"Retrieve and summarize accounts payable data for company {empresa_id}. Focus on overdue payments, upcoming due dates, and payment priorities.",
+            description=f"Retrieve and summarize accounts payable data for company {company_id}. Focus on overdue payments, upcoming due dates, and payment priorities.",
             agent=financial_agent,
             expected_output="Summary of accounts payable with key insights about payment status and priorities"
         )
@@ -40,7 +40,7 @@ def create_financial_analysis_crew(llm, empresa_id: str, analysis_type: str):
     
     elif analysis_type == "supplier_analysis":
         data_task = Task(
-            description=f"Retrieve supplier information and payment history for company {empresa_id}.",
+            description=f"Retrieve supplier information and payment history for company {company_id}.",
             agent=financial_agent,
             expected_output="Summary of suppliers with payment patterns and relationships"
         )
@@ -56,7 +56,7 @@ def create_financial_analysis_crew(llm, empresa_id: str, analysis_type: str):
     
     else:  # general financial analysis
         data_task = Task(
-            description=f"Retrieve comprehensive financial data including accounts payable, suppliers, and cost centers for company {empresa_id}.",
+            description=f"Retrieve comprehensive financial data including accounts payable, suppliers, and cost centers for company {company_id}.",
             agent=financial_agent,
             expected_output="Comprehensive financial data summary"
         )

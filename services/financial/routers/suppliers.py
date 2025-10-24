@@ -10,6 +10,6 @@ router = APIRouter()
 
 
 @router.get("/")
-async def list_fornecedores(db: AsyncSession = Depends(get_db)):
+async def list_suppliers(db: AsyncSession = Depends(get_db)):
     """List suppliers."""
-    return {"message": "Fornecedores endpoint - to be implemented"}
+    return {"message": "Suppliers endpoint - to be implemented"}

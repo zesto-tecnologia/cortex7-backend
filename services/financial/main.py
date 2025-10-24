@@ -36,17 +36,17 @@ async def health_check():
 
 # Import routers
 from services.financial.routers import (
-    contas_pagar,
-    cartoes,
-    fornecedores,
-    centros_custo,
+    accounts_payable,
+    cards,
+    suppliers,
+    cost_centers,
 )
 
 # Include routers
-app.include_router(contas_pagar.router, prefix="/contas-pagar", tags=["Contas a Pagar"])
-app.include_router(cartoes.router, prefix="/cartoes", tags=["Cartões Corporativos"])
-app.include_router(fornecedores.router, prefix="/fornecedores", tags=["Fornecedores"])
-app.include_router(centros_custo.router, prefix="/centros-custo", tags=["Centros de Custo"])
+app.include_router(accounts_payable.router, prefix="/accounts-payable", tags=["Accounts Payable"])
+app.include_router(cards.router, prefix="/cards", tags=["Corporate Cards"])
+app.include_router(suppliers.router, prefix="/suppliers", tags=["Suppliers"])
+app.include_router(cost_centers.router, prefix="/cost-centers", tags=["Cost Centers"])
 
 
 if __name__ == "__main__":

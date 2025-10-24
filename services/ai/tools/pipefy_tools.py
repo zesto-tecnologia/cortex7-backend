@@ -46,7 +46,7 @@ def execute_graphql_query(query: str, variables: dict = None) -> dict:
 
 class GetPipesTool(BaseTool):
     name: str = "Get Pipes"
-    description: str = "Obtém informações sobre pipes (processos/fluxos de trabalho) de uma organização no Pipefy. Use para consultar pipes disponíveis. Input: ids (lista de IDs dos pipes, obrigatório)"
+    description: str = "Get information sobre pipes (lawsuits/workflows) de uma organização no Pipefy. Use para consultar pipes disponíveis. Input: ids (lista de IDs dos pipes, obrigatório)"
 
     def _run(self, ids: str) -> str:
         """Execute the tool."""
@@ -77,7 +77,7 @@ class GetPipesTool(BaseTool):
             if "errors" in result:
                 return f"Erro ao consultar pipes: {result['errors']}"
 
-            pipes = result.get("data", {}).get("pipes", [])
+            pipes = result.get("date", {}).get("pipes", [])
             return f"Foram encontrados {len(pipes)} pipes. Dados: {pipes}"
         except Exception as e:
             logger.error(f"Error in GetPipesTool: {e}")
@@ -86,7 +86,7 @@ class GetPipesTool(BaseTool):
 
 class GetCardsTool(BaseTool):
     name: str = "Get Cards"
-    description: str = "Obtém cartões (cards/itens) de um pipe específico no Pipefy. Use para consultar itens de trabalho em um processo. Input: pipe_id (ID do pipe, obrigatório), first (número de cards a retornar, padrão 50)"
+    description: str = "Get cards (cards/items) de um pipe específico no Pipefy. Use para consultar items de trabalho em um lawsuit. Input: pipe_id (ID do pipe, obrigatório), first (number of cards a retornar, padrão 50)"
 
     def _run(self, pipe_id: str, first: int = 50) -> str:
         """Execute the tool."""
@@ -122,7 +122,7 @@ class GetCardsTool(BaseTool):
             if "errors" in result:
                 return f"Erro ao consultar cards: {result['errors']}"
 
-            cards_data = result.get("data", {}).get("cards", {})
+            cards_data = result.get("date", {}).get("cards", {})
             cards = cards_data.get("edges", [])
             total = cards_data.get("totalCount", 0)
 
@@ -135,7 +135,7 @@ class GetCardsTool(BaseTool):
 
 class GetPhasesTool(BaseTool):
     name: str = "Get Phases"
-    description: str = "Obtém as fases (phases/etapas) de um pipe específico no Pipefy. Use para entender o fluxo de trabalho e estágios de um processo. Input: pipe_id (ID do pipe, obrigatório)"
+    description: str = "Get the phases (phases/etapas) de um pipe específico no Pipefy. Use para entender o fluxo de trabalho e estágios de um lawsuit. Input: pipe_id (ID do pipe, obrigatório)"
 
     def _run(self, pipe_id: str) -> str:
         """Execute the tool."""
@@ -163,7 +163,7 @@ class GetPhasesTool(BaseTool):
             if "errors" in result:
                 return f"Erro ao consultar fases: {result['errors']}"
 
-            pipe = result.get("data", {}).get("pipe", {})
+            pipe = result.get("date", {}).get("pipe", {})
             phases = pipe.get("phases", [])
 
             if not phases:
@@ -177,7 +177,7 @@ class GetPhasesTool(BaseTool):
 
 class GetCardDetailsTool(BaseTool):
     name: str = "Get Card Details"
-    description: str = "Obtém informações detalhadas sobre um card (cartão) específico no Pipefy, incluindo campos, comentários e histórico. Input: card_id (ID do card, obrigatório)"
+    description: str = "Get information detalhadas sobre um card (card) específico no Pipefy, incluindo campos, comentários e histórico. Input: card_id (ID do card, obrigatório)"
 
     def _run(self, card_id: str) -> str:
         """Execute the tool."""
@@ -229,7 +229,7 @@ class GetCardDetailsTool(BaseTool):
             if "errors" in result:
                 return f"Erro ao consultar detalhes do card: {result['errors']}"
 
-            card = result.get("data", {}).get("card", {})
+            card = result.get("date", {}).get("card", {})
 
             if not card:
                 return f"Card {card_id} não encontrado"
@@ -242,7 +242,7 @@ class GetCardDetailsTool(BaseTool):
 
 class GetOrganizationsTool(BaseTool):
     name: str = "Get Organizations"
-    description: str = "Obtém informações sobre as organizações disponíveis no Pipefy para o usuário autenticado. Não requer parâmetros de entrada."
+    description: str = "Get information sobre as organizações disponíveis no Pipefy para o usuário autenticado. Não requer parâmetros de entrada."
 
     def _run(self) -> str:
         """Execute the tool."""
@@ -270,7 +270,7 @@ class GetOrganizationsTool(BaseTool):
             if "errors" in result:
                 return f"Erro ao consultar organizações: {result['errors']}"
 
-            me = result.get("data", {}).get("me", {})
+            me = result.get("date", {}).get("me", {})
             organizations = me.get("organizations", [])
 
             return f"Usuário: {me.get('name')} ({me.get('email')}). {len(organizations)} organização(ões) encontrada(s). Dados: {organizations}"

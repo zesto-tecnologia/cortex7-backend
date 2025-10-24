@@ -18,7 +18,7 @@ class ChatRequest(BaseModel):
     """Request for chat endpoint."""
     
     message: str = Field(..., description="User message")
-    empresa_id: UUID = Field(..., description="Company ID for context")
+    company_id: UUID = Field(..., description="Company ID for context")
     conversation_history: Optional[List[ChatMessage]] = Field(
         default=None,
         description="Previous conversation history"

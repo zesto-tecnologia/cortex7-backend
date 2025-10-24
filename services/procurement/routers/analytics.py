@@ -10,31 +10,31 @@ from datetime import date, timedelta
 from uuid import UUID
 
 from shared.database.connection import get_db
-from shared.models.suprimentos import OrdemCompra
-from shared.models.financeiro import Fornecedor
+from shared.models.procurement import PurchaseOrder
+from shared.models.financial import Supplier
 
 router = APIRouter()
 
 
-@router.get("/spend-overview/{empresa_id}")
+@router.get("/spend-overview/{company_id}")
 async def get_spend_overview(
-    empresa_id: UUID,
-    periodo_dias: int = 30,
+    company_id: UUID,
+    period_days: int = 30,
     db: AsyncSession = Depends(get_db),
 ):
     """Get spending overview for the company."""
-    data_inicio = date.today() - timedelta(days=periodo_dias)
+    start_date = date.today() - timedelta(days=period_days)
 
     # Total spend
     query = select(
-        func.count(OrdemCompra.id).label("total_ordens"),
-        func.sum(OrdemCompra.valor_total).label("valor_total"),
-        func.avg(OrdemCompra.valor_total).label("valor_medio")
+        func.count(PurchaseOrder.id).label("total_orders"),
+        func.sum(PurchaseOrder.total_value).label("total_value"),
+        func.avg(PurchaseOrder.total_value).label("average_value")
     ).where(
         and_(
-            OrdemCompra.empresa_id == empresa_id,
-            OrdemCompra.created_at >= data_inicio,
-            OrdemCompra.status.in_(["aprovada", "pedido_emitido", "recebido"])
+            PurchaseOrder.company_id == company_id,
+            PurchaseOrder.created_at >= start_date,
+            PurchaseOrder.status.in_(["approved", "order_issued", "received"])
         )
     )
 
@@ -43,222 +43,222 @@ async def get_spend_overview(
 
     # By status
     status_query = select(
-        OrdemCompra.status,
-        func.count(OrdemCompra.id).label("quantidade"),
-        func.sum(OrdemCompra.valor_total).label("valor")
+        PurchaseOrder.status,
+        func.count(PurchaseOrder.id).label("quantity"),
+        func.sum(PurchaseOrder.total_value).label("value")
     ).where(
         and_(
-            OrdemCompra.empresa_id == empresa_id,
-            OrdemCompra.created_at >= data_inicio
+            PurchaseOrder.company_id == company_id,
+            PurchaseOrder.created_at >= start_date
         )
-    ).group_by(OrdemCompra.status)
+    ).group_by(PurchaseOrder.status)
 
     status_result = await db.execute(status_query)
     status_breakdown = status_result.fetchall()
 
     return {
-        "periodo_dias": periodo_dias,
-        "total_ordens": stats.total_ordens or 0,
-        "valor_total": float(stats.valor_total) if stats.valor_total else 0,
-        "valor_medio": float(stats.valor_medio) if stats.valor_medio else 0,
-        "por_status": [
+        "period_days": period_days,
+        "total_orders": stats.total_orders or 0,
+        "total_value": float(stats.total_value) if stats.total_value else 0,
+        "average_value": float(stats.average_value) if stats.average_value else 0,
+        "by_status": [
             {
                 "status": row.status,
-                "quantidade": row.quantidade,
-                "valor": float(row.valor) if row.valor else 0
+                "quantity": row.quantity,
+                "value": float(row.value) if row.value else 0
             }
             for row in status_breakdown
         ]
     }
 
 
-@router.get("/top-fornecedores/{empresa_id}")
-async def get_top_fornecedores(
-    empresa_id: UUID,
+@router.get("/top-suppliers/{company_id}")
+async def get_top_suppliers(
+    company_id: UUID,
     limit: int = Query(10, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
     """Get top suppliers by spend."""
     query = select(
-        OrdemCompra.fornecedor_id,
-        Fornecedor.razao_social,
-        Fornecedor.cnpj,
-        func.count(OrdemCompra.id).label("total_ordens"),
-        func.sum(OrdemCompra.valor_total).label("valor_total")
+        PurchaseOrder.supplier_id,
+        Supplier.company_name,
+        Supplier.tax_id,
+        func.count(PurchaseOrder.id).label("total_orders"),
+        func.sum(PurchaseOrder.total_value).label("total_value")
     ).join(
-        Fornecedor,
-        OrdemCompra.fornecedor_id == Fornecedor.id
+        Supplier,
+        PurchaseOrder.supplier_id == Supplier.id
     ).where(
         and_(
-            OrdemCompra.empresa_id == empresa_id,
-            OrdemCompra.status.in_(["aprovada", "pedido_emitido", "recebido"])
+            PurchaseOrder.company_id == company_id,
+            PurchaseOrder.status.in_(["approved", "order_issued", "received"])
         )
     ).group_by(
-        OrdemCompra.fornecedor_id,
-        Fornecedor.razao_social,
-        Fornecedor.cnpj
+        PurchaseOrder.supplier_id,
+        Supplier.company_name,
+        Supplier.tax_id
     ).order_by(
-        func.sum(OrdemCompra.valor_total).desc()
+        func.sum(PurchaseOrder.total_value).desc()
     ).limit(limit)
 
     result = await db.execute(query)
-    fornecedores = result.fetchall()
+    suppliers = result.fetchall()
 
     return [
         {
-            "fornecedor_id": f.fornecedor_id,
-            "razao_social": f.razao_social,
-            "cnpj": f.cnpj,
-            "total_ordens": f.total_ordens,
-            "valor_total": float(f.valor_total) if f.valor_total else 0
+            "supplier_id": s.supplier_id,
+            "company_name": s.company_name,
+            "tax_id": s.tax_id,
+            "total_orders": s.total_orders,
+            "total_value": float(s.total_value) if s.total_value else 0
         }
-        for f in fornecedores
+        for s in suppliers
     ]
 
 
-@router.get("/spend-by-category/{empresa_id}")
+@router.get("/spend-by-category/{company_id}")
 async def get_spend_by_category(
-    empresa_id: UUID,
+    company_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Get spending breakdown by category."""
     query = select(
-        OrdemCompra.centro_custo,
-        func.count(OrdemCompra.id).label("quantidade"),
-        func.sum(OrdemCompra.valor_total).label("valor")
+        PurchaseOrder.cost_center,
+        func.count(PurchaseOrder.id).label("quantity"),
+        func.sum(PurchaseOrder.total_value).label("value")
     ).where(
         and_(
-            OrdemCompra.empresa_id == empresa_id,
-            OrdemCompra.status.in_(["aprovada", "pedido_emitido", "recebido"])
+            PurchaseOrder.company_id == company_id,
+            PurchaseOrder.status.in_(["approved", "order_issued", "received"])
         )
-    ).group_by(OrdemCompra.centro_custo)
+    ).group_by(PurchaseOrder.cost_center)
 
     result = await db.execute(query)
-    categorias = result.fetchall()
+    categories = result.fetchall()
 
-    total_spend = sum(float(c.valor) if c.valor else 0 for c in categorias)
+    total_spend = sum(float(c.value) if c.value else 0 for c in categories)
 
     return [
         {
-            "categoria": c.centro_custo or "Não categorizado",
-            "quantidade": c.quantidade,
-            "valor": float(c.valor) if c.valor else 0,
-            "percentual": (float(c.valor) / total_spend * 100) if c.valor and total_spend > 0 else 0
+            "category": c.cost_center or "Uncategorized",
+            "quantity": c.quantity,
+            "value": float(c.value) if c.value else 0,
+            "percentage": (float(c.value) / total_spend * 100) if c.value and total_spend > 0 else 0
         }
-        for c in categorias
+        for c in categories
     ]
 
 
-@router.get("/approval-metrics/{empresa_id}")
+@router.get("/approval-metrics/{company_id}")
 async def get_approval_metrics(
-    empresa_id: UUID,
+    company_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Get approval process metrics."""
     # Average approval time
-    aprovadas = await db.execute(
-        select(OrdemCompra).where(
+    approved = await db.execute(
+        select(PurchaseOrder).where(
             and_(
-                OrdemCompra.empresa_id == empresa_id,
-                OrdemCompra.status == "aprovada"
+                PurchaseOrder.company_id == company_id,
+                PurchaseOrder.status == "approved"
             )
         )
     )
 
-    ordens_aprovadas = aprovadas.scalars().all()
+    approved_orders = approved.scalars().all()
 
-    tempos_aprovacao = []
-    for ordem in ordens_aprovadas:
-        if ordem.aprovadores and len(ordem.aprovadores) > 0:
-            primeira_aprovacao = ordem.aprovadores[0].get("aprovado_em")
-            if primeira_aprovacao:
-                data_aprovacao = date.fromisoformat(primeira_aprovacao)
-                tempo_dias = (data_aprovacao - ordem.created_at.date()).days
-                tempos_aprovacao.append(tempo_dias)
+    approval_times = []
+    for order in approved_orders:
+        if order.approvers and len(order.approvers) > 0:
+            first_approval = order.approvers[0].get("approved_at")
+            if first_approval:
+                approval_date = date.fromisoformat(first_approval)
+                days_to_approve = (approval_date - order.created_at.date()).days
+                approval_times.append(days_to_approve)
 
     # Rejection rate
-    total_query = select(func.count(OrdemCompra.id)).where(
-        OrdemCompra.empresa_id == empresa_id
+    total_query = select(func.count(PurchaseOrder.id)).where(
+        PurchaseOrder.company_id == company_id
     )
     total_result = await db.execute(total_query)
-    total_ordens = total_result.scalar() or 0
+    total_orders = total_result.scalar() or 0
 
-    canceladas_query = select(func.count(OrdemCompra.id)).where(
+    cancelled_query = select(func.count(PurchaseOrder.id)).where(
         and_(
-            OrdemCompra.empresa_id == empresa_id,
-            OrdemCompra.status == "cancelada"
+            PurchaseOrder.company_id == company_id,
+            PurchaseOrder.status == "cancelled"
         )
     )
-    canceladas_result = await db.execute(canceladas_query)
-    total_canceladas = canceladas_result.scalar() or 0
+    cancelled_result = await db.execute(cancelled_query)
+    total_cancelled = cancelled_result.scalar() or 0
 
     return {
-        "tempo_medio_aprovacao_dias": sum(tempos_aprovacao) / len(tempos_aprovacao) if tempos_aprovacao else 0,
-        "tempo_minimo_dias": min(tempos_aprovacao) if tempos_aprovacao else 0,
-        "tempo_maximo_dias": max(tempos_aprovacao) if tempos_aprovacao else 0,
-        "taxa_rejeicao": (total_canceladas / total_ordens * 100) if total_ordens > 0 else 0,
-        "total_aprovadas": len(ordens_aprovadas),
-        "total_rejeitadas": total_canceladas
+        "average_approval_time_days": sum(approval_times) / len(approval_times) if approval_times else 0,
+        "minimum_time_days": min(approval_times) if approval_times else 0,
+        "maximum_time_days": max(approval_times) if approval_times else 0,
+        "rejection_rate": (total_cancelled / total_orders * 100) if total_orders > 0 else 0,
+        "total_approved": len(approved_orders),
+        "total_rejected": total_cancelled
     }
 
 
-@router.get("/savings-opportunities/{empresa_id}")
+@router.get("/savings-opportunities/{company_id}")
 async def get_savings_opportunities(
-    empresa_id: UUID,
+    company_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Identify potential savings opportunities."""
     # Get duplicate orders (same items from different suppliers)
-    query = select(OrdemCompra).where(
+    query = select(PurchaseOrder).where(
         and_(
-            OrdemCompra.empresa_id == empresa_id,
-            OrdemCompra.status.in_(["aprovada", "pedido_emitido", "recebido"])
+            PurchaseOrder.company_id == company_id,
+            PurchaseOrder.status.in_(["approved", "order_issued", "received"])
         )
     )
 
     result = await db.execute(query)
-    ordens = result.scalars().all()
+    orders = result.scalars().all()
 
     # Analyze items for price variations
     item_prices = {}
-    for ordem in ordens:
-        if ordem.itens:
-            for item in ordem.itens:
-                descricao = item.get("descricao", "")
-                valor_unit = item.get("valor_unitario", 0)
+    for order in orders:
+        if order.items:
+            for item in order.items:
+                description = item.get("description", "")
+                unit_value = item.get("unit_value", 0)
 
-                if descricao not in item_prices:
-                    item_prices[descricao] = []
+                if description not in item_prices:
+                    item_prices[description] = []
 
-                item_prices[descricao].append({
-                    "fornecedor_id": ordem.fornecedor_id,
-                    "valor": valor_unit,
-                    "data": ordem.created_at
+                item_prices[description].append({
+                    "supplier_id": order.supplier_id,
+                    "value": unit_value,
+                    "date": order.created_at
                 })
 
     # Find items with significant price variations
-    oportunidades = []
-    for item, precos in item_prices.items():
-        if len(precos) > 1:
-            valores = [p["valor"] for p in precos]
-            min_valor = min(valores)
-            max_valor = max(valores)
+    opportunities = []
+    for item, prices in item_prices.items():
+        if len(prices) > 1:
+            values = [p["value"] for p in prices]
+            min_value = min(values)
+            max_value = max(values)
 
-            if max_valor > min_valor * 1.1:  # More than 10% difference
-                economia_potencial = (max_valor - min_valor) / max_valor * 100
+            if max_value > min_value * 1.1:  # More than 10% difference
+                potential_savings = (max_value - min_value) / max_value * 100
 
-                oportunidades.append({
+                opportunities.append({
                     "item": item,
-                    "menor_preco": min_valor,
-                    "maior_preco": max_valor,
-                    "economia_potencial_pct": economia_potencial,
-                    "fornecedores_count": len(set(p["fornecedor_id"] for p in precos))
+                    "lowest_price": min_value,
+                    "highest_price": max_value,
+                    "potential_savings_pct": potential_savings,
+                    "suppliers_count": len(set(p["supplier_id"] for p in prices))
                 })
 
     # Sort by potential savings
-    oportunidades.sort(key=lambda x: x["economia_potencial_pct"], reverse=True)
+    opportunities.sort(key=lambda x: x["potential_savings_pct"], reverse=True)
 
     return {
-        "total_oportunidades": len(oportunidades),
-        "oportunidades": oportunidades[:10]  # Top 10 opportunities
+        "total_opportunities": len(opportunities),
+        "opportunities": opportunities[:10]  # Top 10 opportunities
     }

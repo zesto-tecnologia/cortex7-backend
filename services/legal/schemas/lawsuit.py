@@ -9,12 +9,12 @@ from decimal import Decimal
 from uuid import UUID
 
 
-class ProcessoJuridicoBase(BaseModel):
+class LawsuitBase(BaseModel):
     """Base schema for Legal Process."""
 
-    empresa_id: UUID
-    numero_processo: Optional[str] = Field(None, max_length=50)
-    tipo: Optional[str] = Field(None, max_length=50)
+    company_id: UUID
+    case_number: Optional[str] = Field(None, max_length=50)
+    type: Optional[str] = Field(None, max_length=50)
     parte_contraria: Optional[str] = Field(None, max_length=255)
     valor_causa: Optional[Decimal] = Field(None, decimal_places=2)
     status: Optional[str] = Field(None, max_length=30)
@@ -23,20 +23,20 @@ class ProcessoJuridicoBase(BaseModel):
     advogado_responsavel: Optional[str] = Field(None, max_length=255)
     historico: Optional[List[Dict[str, Any]]] = None
     proxima_acao: Optional[date] = None
-    proxima_acao_descricao: Optional[str] = None
+    next_action_description: Optional[str] = None
     documentos_ids: Optional[List[UUID]] = None
 
 
-class ProcessoJuridicoCreate(ProcessoJuridicoBase):
+class LawsuitCreate(LawsuitBase):
     """Schema for creating a Legal Process."""
     pass
 
 
-class ProcessoJuridicoUpdate(BaseModel):
+class LawsuitUpdate(BaseModel):
     """Schema for updating a Legal Process."""
 
-    numero_processo: Optional[str] = Field(None, max_length=50)
-    tipo: Optional[str] = Field(None, max_length=50)
+    case_number: Optional[str] = Field(None, max_length=50)
+    type: Optional[str] = Field(None, max_length=50)
     parte_contraria: Optional[str] = Field(None, max_length=255)
     valor_causa: Optional[Decimal] = Field(None, decimal_places=2)
     status: Optional[str] = Field(None, max_length=30)
@@ -45,11 +45,11 @@ class ProcessoJuridicoUpdate(BaseModel):
     advogado_responsavel: Optional[str] = Field(None, max_length=255)
     historico: Optional[List[Dict[str, Any]]] = None
     proxima_acao: Optional[date] = None
-    proxima_acao_descricao: Optional[str] = None
+    next_action_description: Optional[str] = None
     documentos_ids: Optional[List[UUID]] = None
 
 
-class ProcessoJuridicoResponse(ProcessoJuridicoBase):
+class LawsuitResponse(LawsuitBase):
     """Schema for Legal Process response."""
 
     id: UUID
@@ -59,10 +59,10 @@ class ProcessoJuridicoResponse(ProcessoJuridicoBase):
         from_attributes = True
 
 
-class ProcessoHistorico(BaseModel):
+class LawsuitHistory(BaseModel):
     """Schema for process history entry."""
 
-    data: date
-    evento: str = Field(..., max_length=100)
-    descricao: str
-    responsavel: Optional[str] = Field(None, max_length=255)
+    date: date
+    event: str = Field(..., max_length=100)
+    description: str
+    responsible: Optional[str] = Field(None, max_length=255)

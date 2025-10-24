@@ -55,7 +55,7 @@ def generate_flow_diagram(agents, tasks):
     return "\n".join(diagram_lines)
 
 
-def create_general_task_crew(llm, empresa_id: str, task_description: str):
+def create_general_task_crew(llm, company_id: str, task_description: str):
     """
     Create a versatile crew that can handle general business tasks.
     
@@ -63,7 +63,7 @@ def create_general_task_crew(llm, empresa_id: str, task_description: str):
     
     Args:
         llm: Language model to use
-        empresa_id: Company UUID
+        company_id: Company UUID
         task_description: Description of the task to perform
     """
     # Initialize all domain agents
@@ -85,7 +85,7 @@ def create_general_task_crew(llm, empresa_id: str, task_description: str):
     
     # Domain-specific agent selection (Portuguese and English keywords)
     if any(word in task_lower for word in ["financial", "payment", "invoice", "supplier", "cost",
-                                             "financeiro", "pagamento", "fatura", "fornecedor", "custo"]):
+                                             "financial", "pagamento", "fatura", "supplier", "custo"]):
         selected_agents.append(all_agents["financial"])
 
     if any(word in task_lower for word in ["employee", "hr", "vacation", "contract", "staff",
@@ -93,7 +93,7 @@ def create_general_task_crew(llm, empresa_id: str, task_description: str):
         selected_agents.append(all_agents["hr"])
 
     if any(word in task_lower for word in ["legal", "contract", "deadline", "process", "lawsuit",
-                                             "jurídico", "juridico", "contrato", "prazo", "processo", "ação"]):
+                                             "legal", "legal", "contrato", "deadline", "lawsuit", "action"]):
         selected_agents.append(all_agents["legal"])
 
     if any(word in task_lower for word in ["document", "file", "search", "report",
@@ -101,11 +101,11 @@ def create_general_task_crew(llm, empresa_id: str, task_description: str):
         selected_agents.append(all_agents["documents"])
 
     if any(word in task_lower for word in ["purchase", "procurement", "order", "approval",
-                                             "compra", "aquisição", "aquisicao", "pedido", "aprovação", "aprovacao", "fornecedor"]):
+                                             "purchase", "acquisition", "acquisition", "order", "approval", "approval", "supplier"]):
         selected_agents.append(all_agents["procurement"])
 
     if any(word in task_lower for word in ["pipefy", "pipe", "card", "workflow", "process", "phase",
-                                             "cartão", "cartao", "fluxo", "processo", "fase", "etapa"]):
+                                             "card", "card", "fluxo", "lawsuit", "fase", "etapa"]):
         selected_agents.append(all_agents["pipefy"])
 
     # Always include general agents for versatility
@@ -117,24 +117,24 @@ def create_general_task_crew(llm, empresa_id: str, task_description: str):
     
     # Create main task
     main_task = Task(
-        description=f"Para a empresa {empresa_id}: {task_description}. Reúna todas as informações necessárias e forneça uma resposta abrangente em português brasileiro.",
+        description=f"For company {company_id}: {task_description}. Gather all necessary information e provide a comprehensive answer in Brazilian Portuguese.",
         agent=selected_agents[0],
-        expected_output="Informações completas e descobertas iniciais em português brasileiro"
+        expected_output="Informações completas e descobertas iniciais in Brazilian Portuguese"
     )
 
     # Analysis task
     analysis_task = Task(
-        description="Analise as informações coletadas e forneça insights, recomendações e passos acionáveis em português brasileiro.",
+        description="Analise as informações coletadas e forneça insights, recomendações e passos acionáveis in Brazilian Portuguese.",
         agent=all_agents["analyst"],
-        expected_output="Análise com insights e recomendações em português brasileiro",
+        expected_output="Análise com insights e recomendações in Brazilian Portuguese",
         context=[main_task]
     )
 
     # Final report task
     report_task = Task(
-        description="Crie uma resposta clara e profissional que atenda à solicitação original de forma abrangente em português brasileiro.",
+        description="Crie uma resposta clara e profissional que atenda à solicitação original de forma abrangente in Brazilian Portuguese.",
         agent=all_agents["writer"],
-        expected_output="Resposta profissional e bem estruturada em português brasileiro",
+        expected_output="Resposta profissional e bem estruturada in Brazilian Portuguese",
         context=[main_task, analysis_task]
     )
     

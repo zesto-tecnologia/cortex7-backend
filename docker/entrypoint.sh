@@ -2,7 +2,7 @@
 set -e
 
 echo "Running Alembic migrations..."
-alembic -c alembic_unified.ini upgrade head
+alembic upgrade head
 
 echo "Migrations completed successfully!"
 

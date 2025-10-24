@@ -42,7 +42,7 @@ async def chat(request: ChatRequest):
             # Trigger async workflow
             task = execute_general_workflow.delay(
                 workflow_id=None,
-                empresa_id=str(request.empresa_id),
+                company_id=str(request.company_id),
                 task_description=request.message
             )
 
@@ -53,7 +53,7 @@ async def chat(request: ChatRequest):
             )
 
         # Synchronous execution with simple crew
-        crew = create_simple_crew(llm, str(request.empresa_id), request.message)
+        crew = create_simple_crew(llm, str(request.company_id), request.message)
         result = crew.kickoff()
 
         return ChatResponse(
@@ -131,7 +131,7 @@ async def chat_stream(request: ChatRequest):
             llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7, streaming=True)
 
             # Use general task crew for streaming
-            crew = create_general_task_crew(llm, str(request.empresa_id), request.message)
+            crew = create_general_task_crew(llm, str(request.company_id), request.message)
 
             # Set crew-level callbacks
             crew.task_callback = task_callback_fn

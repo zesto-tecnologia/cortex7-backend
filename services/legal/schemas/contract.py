@@ -1,5 +1,5 @@
 """
-Pydantic schemas for Contratos (Legal Contracts).
+Pydantic schemas for Contracts (Legal Contracts).
 """
 
 from pydantic import BaseModel, Field
@@ -9,16 +9,16 @@ from decimal import Decimal
 from uuid import UUID
 
 
-class ContratoBase(BaseModel):
+class ContractBase(BaseModel):
     """Base schema for Contract."""
 
-    empresa_id: UUID
-    documento_id: Optional[UUID] = None
-    tipo: str = Field(..., max_length=50)
+    company_id: UUID
+    document_id: Optional[UUID] = None
+    type: str = Field(..., max_length=50)
     parte_contraria: str = Field(..., max_length=255)
     cnpj_cpf_contraparte: Optional[str] = Field(None, max_length=14)
     objeto: str
-    valor: Optional[Decimal] = Field(None, decimal_places=2)
+    value: Optional[Decimal] = Field(None, decimal_places=2)
     data_inicio: date
     data_fim: Optional[date] = None
     renovacao_automatica: bool = Field(default=False)
@@ -29,20 +29,20 @@ class ContratoBase(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
-class ContratoCreate(ContratoBase):
+class ContractCreate(ContractBase):
     """Schema for creating a Contract."""
     pass
 
 
-class ContratoUpdate(BaseModel):
+class ContractUpdate(BaseModel):
     """Schema for updating a Contract."""
 
-    documento_id: Optional[UUID] = None
-    tipo: Optional[str] = Field(None, max_length=50)
+    document_id: Optional[UUID] = None
+    type: Optional[str] = Field(None, max_length=50)
     parte_contraria: Optional[str] = Field(None, max_length=255)
     cnpj_cpf_contraparte: Optional[str] = Field(None, max_length=14)
     objeto: Optional[str] = None
-    valor: Optional[Decimal] = Field(None, decimal_places=2)
+    value: Optional[Decimal] = Field(None, decimal_places=2)
     data_inicio: Optional[date] = None
     data_fim: Optional[date] = None
     renovacao_automatica: Optional[bool] = None
@@ -53,7 +53,7 @@ class ContratoUpdate(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
-class ContratoResponse(ContratoBase):
+class ContractResponse(ContractBase):
     """Schema for Contract response."""
 
     id: UUID
@@ -63,7 +63,7 @@ class ContratoResponse(ContratoBase):
         from_attributes = True
 
 
-class ContratoWithAlertas(ContratoResponse):
+class ContractWithAlerts(ContractResponse):
     """Contract with alerts."""
 
     alertas: List[Dict[str, Any]] = []

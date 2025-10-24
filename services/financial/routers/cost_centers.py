@@ -10,6 +10,6 @@ router = APIRouter()
 
 
 @router.get("/")
-async def list_centros_custo(db: AsyncSession = Depends(get_db)):
+async def list_cost_centers(db: AsyncSession = Depends(get_db)):
     """List cost centers."""
-    return {"message": "Centros de Custo endpoint - to be implemented"}
+    return {"message": "Cost centers endpoint - to be implemented"}

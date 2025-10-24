@@ -5,7 +5,7 @@ Simple crew with a single default agent for straightforward queries.
 from crewai import Crew, Task, Agent
 
 
-def create_simple_crew(llm, empresa_id: str, query: str):
+def create_simple_crew(llm, company_id: str, query: str):
     """
     Create a simple crew with a single versatile agent.
     
@@ -14,7 +14,7 @@ def create_simple_crew(llm, empresa_id: str, query: str):
     
     Args:
         llm: Language model to use
-        empresa_id: Company UUID
+        company_id: Company UUID
         query: User query or task description
     """
     # Create a single versatile agent
@@ -35,7 +35,7 @@ def create_simple_crew(llm, empresa_id: str, query: str):
     
     # Create a single task
     task = Task(
-        description=f"For company {empresa_id}: {query}. Provide a clear and helpful response.",
+        description=f"For company {company_id}: {query}. Provide a clear and helpful response.",
         agent=default_agent,
         expected_output="Clear, accurate response to the query"
     )

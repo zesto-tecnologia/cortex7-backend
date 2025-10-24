@@ -10,7 +10,7 @@ from uuid import UUID
 
 class WorkflowCreate(BaseModel):
     """Schema for creating a workflow."""
-    empresa_id: UUID
+    company_id: UUID
     workflow_type: str = Field(..., max_length=50)
     input_data: Optional[Dict[str, Any]] = None
     priority: str = Field(default="normal", pattern="^(low|normal|high)$")
@@ -26,7 +26,7 @@ class WorkflowUpdate(BaseModel):
 class WorkflowResponse(BaseModel):
     """Schema for workflow response."""
     id: UUID
-    empresa_id: UUID
+    company_id: UUID
     workflow_type: str
     status: str
     input_data: Optional[Dict[str, Any]]
@@ -43,40 +43,40 @@ class WorkflowResponse(BaseModel):
 
 class TarefaCreate(BaseModel):
     """Schema for creating a task."""
-    empresa_id: UUID
-    titulo: str = Field(..., max_length=255)
-    descricao: Optional[str] = None
-    tipo: Optional[str] = Field(None, max_length=50)
-    atribuido_a: Optional[UUID] = None
+    company_id: UUID
+    title: str = Field(..., max_length=255)
+    description: Optional[str] = None
+    type: Optional[str] = Field(None, max_length=50)
+    assigned_to: Optional[UUID] = None
     workflow_id: Optional[UUID] = None
     prioridade: str = Field(default="normal", pattern="^(low|normal|high|urgent)$")
-    data_vencimento: Optional[str] = None
+    due_date: Optional[str] = None
 
 
 class TarefaUpdate(BaseModel):
     """Schema for updating a task."""
-    titulo: Optional[str] = Field(None, max_length=255)
-    descricao: Optional[str] = None
+    title: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = None
     status: Optional[str] = Field(None, pattern="^(pending|in_progress|completed|cancelled)$")
-    atribuido_a: Optional[UUID] = None
+    assigned_to: Optional[UUID] = None
     resultado: Optional[Dict[str, Any]] = None
     prioridade: Optional[str] = Field(None, pattern="^(low|normal|high|urgent)$")
-    data_vencimento: Optional[str] = None
+    due_date: Optional[str] = None
 
 
 class TarefaResponse(BaseModel):
     """Schema for task response."""
     id: UUID
-    empresa_id: UUID
-    titulo: str
-    descricao: Optional[str]
-    tipo: Optional[str]
+    company_id: UUID
+    title: str
+    description: Optional[str]
+    type: Optional[str]
     status: str
-    atribuido_a: Optional[UUID]
+    assigned_to: Optional[UUID]
     workflow_id: Optional[UUID]
     resultado: Optional[Dict[str, Any]]
     prioridade: str
-    data_vencimento: Optional[str]
+    due_date: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
 

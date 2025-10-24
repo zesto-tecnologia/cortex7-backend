@@ -9,10 +9,10 @@ from decimal import Decimal
 from uuid import UUID
 
 
-class FuncionarioBase(BaseModel):
+class EmployeeBase(BaseModel):
     """Base schema for Employee."""
 
-    empresa_id: UUID
+    company_id: UUID
     usuario_id: Optional[UUID] = None
     cpf: str = Field(..., min_length=11, max_length=11)
     data_nascimento: Optional[date] = None
@@ -30,12 +30,12 @@ class FuncionarioBase(BaseModel):
     status: str = Field(default="ativo", max_length=20)
 
 
-class FuncionarioCreate(FuncionarioBase):
+class EmployeeCreate(EmployeeBase):
     """Schema for creating an Employee."""
     pass
 
 
-class FuncionarioUpdate(BaseModel):
+class EmployeeUpdate(BaseModel):
     """Schema for updating an Employee."""
 
     usuario_id: Optional[UUID] = None
@@ -53,7 +53,7 @@ class FuncionarioUpdate(BaseModel):
     status: Optional[str] = Field(None, max_length=20)
 
 
-class FuncionarioResponse(FuncionarioBase):
+class EmployeeResponse(EmployeeBase):
     """Schema for Employee response."""
 
     id: UUID
@@ -63,16 +63,16 @@ class FuncionarioResponse(FuncionarioBase):
         from_attributes = True
 
 
-class FuncionarioWithContracts(FuncionarioResponse):
+class EmployeeWithContracts(EmployeeResponse):
     """Employee with contracts."""
 
-    contratos_trabalho: List["ContratoTrabalhoResponse"] = []
+    contratos_trabalho: List["EmploymentContractResponse"] = []
 
     class Config:
         from_attributes = True
 
 
 # Import after class definition to avoid circular imports
-from services.hr.schemas.contrato import ContratoTrabalhoResponse
+from services.hr.schemas.contract import EmploymentContractResponse
 
-FuncionarioWithContracts.model_rebuild()
+EmployeeWithContracts.model_rebuild()

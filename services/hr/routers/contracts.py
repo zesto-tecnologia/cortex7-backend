@@ -10,81 +10,81 @@ from uuid import UUID
 from datetime import date
 
 from shared.database.connection import get_db
-from shared.models.rh import ContratoTrabalho
-from services.hr.schemas.contrato import (
-    ContratoTrabalhoCreate,
-    ContratoTrabalhoUpdate,
-    ContratoTrabalhoResponse,
+from shared.models.hr import EmploymentContract
+from services.hr.schemas.contract import (
+    EmploymentContractCreate,
+    EmploymentContractUpdate,
+    EmploymentContractResponse,
 )
 
 router = APIRouter()
 
 
-@router.get("/funcionario/{funcionario_id}", response_model=List[ContratoTrabalhoResponse])
+@router.get("/employee/{employee_id}", response_model=List[EmploymentContractResponse])
 async def list_contratos_funcionario(
-    funcionario_id: UUID,
+    employee_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """List all contracts for an employee."""
-    query = select(ContratoTrabalho).where(
-        ContratoTrabalho.funcionario_id == funcionario_id
-    ).order_by(ContratoTrabalho.data_inicio.desc())
+    query = select(EmploymentContract).where(
+        EmploymentContract.employee_id == employee_id
+    ).order_by(EmploymentContract.start_date.desc())
 
     result = await db.execute(query)
     return result.scalars().all()
 
 
-@router.get("/{contrato_id}", response_model=ContratoTrabalhoResponse)
+@router.get("/{contrato_id}", response_model=EmploymentContractResponse)
 async def get_contrato(
     contrato_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific employment contract."""
     result = await db.execute(
-        select(ContratoTrabalho).where(ContratoTrabalho.id == contrato_id)
+        select(EmploymentContract).where(EmploymentContract.id == contrato_id)
     )
-    contrato = result.scalar_one_or_none()
+    contract = result.scalar_one_or_none()
 
-    if not contrato:
+    if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
 
-    return contrato
+    return contract
 
 
-@router.post("/", response_model=ContratoTrabalhoResponse)
+@router.post("/", response_model=EmploymentContractResponse)
 async def create_contrato(
-    contrato: ContratoTrabalhoCreate,
+    contract: EmploymentContractCreate,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new employment contract."""
-    db_contrato = ContratoTrabalho(**contrato.dict())
+    db_contrato = EmploymentContract(**contract.dict())
     db.add(db_contrato)
     await db.commit()
     await db.refresh(db_contrato)
     return db_contrato
 
 
-@router.put("/{contrato_id}", response_model=ContratoTrabalhoResponse)
+@router.put("/{contrato_id}", response_model=EmploymentContractResponse)
 async def update_contrato(
     contrato_id: UUID,
-    contrato_update: ContratoTrabalhoUpdate,
+    contrato_update: EmploymentContractUpdate,
     db: AsyncSession = Depends(get_db),
 ):
     """Update an employment contract."""
     result = await db.execute(
-        select(ContratoTrabalho).where(ContratoTrabalho.id == contrato_id)
+        select(EmploymentContract).where(EmploymentContract.id == contrato_id)
     )
-    contrato = result.scalar_one_or_none()
+    contract = result.scalar_one_or_none()
 
-    if not contrato:
+    if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
 
     for field, value in contrato_update.dict(exclude_unset=True).items():
-        setattr(contrato, field, value)
+        setattr(contract, field, value)
 
     await db.commit()
-    await db.refresh(contrato)
-    return contrato
+    await db.refresh(contract)
+    return contract
 
 
 @router.post("/{contrato_id}/assinar")
@@ -96,31 +96,31 @@ async def assinar_contrato(
 ):
     """Sign an employment contract."""
     result = await db.execute(
-        select(ContratoTrabalho).where(ContratoTrabalho.id == contrato_id)
+        select(EmploymentContract).where(EmploymentContract.id == contrato_id)
     )
-    contrato = result.scalar_one_or_none()
+    contract = result.scalar_one_or_none()
 
-    if not contrato:
+    if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
 
     from datetime import datetime
 
     if assinatura_funcionario:
-        contrato.assinatura_funcionario_data = datetime.now()
+        contract.assinatura_funcionario_data = datetime.now()
 
     if assinatura_empresa:
-        contrato.assinatura_empresa_data = datetime.now()
+        contract.assinatura_empresa_data = datetime.now()
 
     # Mark as signed if both parties have signed
-    if contrato.assinatura_funcionario_data and contrato.assinatura_empresa_data:
-        contrato.assinado = True
+    if contract.assinatura_funcionario_data and contract.assinatura_empresa_data:
+        contract.assinado = True
 
     await db.commit()
-    await db.refresh(contrato)
+    await db.refresh(contract)
 
     return {
         "message": "Contract signed successfully",
-        "assinado": contrato.assinado,
-        "assinatura_funcionario": contrato.assinatura_funcionario_data is not None,
-        "assinatura_empresa": contrato.assinatura_empresa_data is not None
+        "assinado": contract.assinado,
+        "assinatura_funcionario": contract.assinatura_funcionario_data is not None,
+        "assinatura_empresa": contract.assinatura_empresa_data is not None
     }

@@ -10,11 +10,11 @@ from uuid import UUID
 import json
 
 from shared.database.connection import get_db
-from shared.models.documento import Documento
-from services.documents.schemas.documento import (
-    DocumentoCreate,
-    DocumentoUpdate,
-    DocumentoResponse,
+from shared.models.document import Document
+from services.documents.schemas.document import (
+    DocumentCreate,
+    DocumentUpdate,
+    DocumentResponse,
 )
 from services.documents.services.document_processor import DocumentProcessor
 from services.documents.services.embedding_service import EmbeddingService
@@ -25,41 +25,41 @@ document_processor = DocumentProcessor()
 embedding_service = EmbeddingService()
 
 
-@router.get("/", response_model=List[DocumentoResponse])
+@router.get("/", response_model=List[DocumentResponse])
 async def list_documents(
-    empresa_id: UUID,
-    departamento: Optional[str] = None,
-    tipo: Optional[str] = None,
-    status: Optional[str] = "ativo",
+    company_id: UUID,
+    department: Optional[str] = None,
+    type: Optional[str] = None,
+    status: Optional[str] = "active",
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
 ):
     """List documents with filters."""
-    query = select(Documento).where(
-        Documento.empresa_id == empresa_id,
-        Documento.status == status
+    query = select(Document).where(
+        Document.company_id == company_id,
+        Document.status == status
     )
 
-    if departamento:
-        query = query.where(Documento.departamento == departamento)
+    if department:
+        query = query.where(Document.department == department)
 
-    if tipo:
-        query = query.where(Documento.tipo == tipo)
+    if type:
+        query = query.where(Document.type == type)
 
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
 
 
-@router.get("/{document_id}", response_model=DocumentoResponse)
+@router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific document."""
     result = await db.execute(
-        select(Documento).where(Documento.id == document_id)
+        select(Document).where(Document.id == document_id)
     )
     document = result.scalar_one_or_none()
 
@@ -69,12 +69,12 @@ async def get_document(
     return document
 
 
-@router.post("/upload", response_model=DocumentoResponse)
+@router.post("/upload", response_model=DocumentResponse)
 async def upload_document(
-    empresa_id: UUID = Form(...),
-    departamento: str = Form(...),
-    tipo: str = Form(...),
-    titulo: str = Form(...),
+    company_id: UUID = Form(...),
+    departament: str = Form(...),
+    type: str = Form(...),
+    title: str = Form(...),
     metadata: str = Form("{}"),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
@@ -95,17 +95,17 @@ async def upload_document(
         embedding = await embedding_service.generate_embedding(extracted_text)
 
         # TODO: Upload file to S3 and get URL
-        arquivo_url = f"s3://bucket/{empresa_id}/{file.filename}"
+        file_url = f"s3://bucket/{company_id}/{file.filename}"
 
         # Create document record
-        document = Documento(
-            empresa_id=empresa_id,
-            departamento=departamento,
-            tipo=tipo,
-            titulo=titulo,
-            conteudo_original=extracted_text,
+        document = Document(
+            company_id=company_id,
+            department=departament,
+            type=type,
+            title=title,
+            original_content=extracted_text,
             metadata=metadata_dict,
-            arquivo_url=arquivo_url,
+            file_url=file_url,
             embedding=embedding,
         )
 
@@ -121,22 +121,22 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/", response_model=DocumentoResponse)
+@router.post("/", response_model=DocumentResponse)
 async def create_document(
-    document: DocumentoCreate,
+    document: DocumentCreate,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a document record without file upload."""
     # Generate embedding if content is provided
     embedding = None
-    if document.conteudo_original:
+    if document.original_content:
         embedding = await embedding_service.generate_embedding(
-            document.conteudo_original
+            document.original_content
         )
 
-    db_document = Documento(
-        **document.dict(exclude={'conteudo_original'}),
-        conteudo_original=document.conteudo_original,
+    db_document = Document(
+        **document.dict(exclude={'original_content'}),
+        original_content=document.original_content,
         embedding=embedding
     )
 
@@ -146,15 +146,15 @@ async def create_document(
     return db_document
 
 
-@router.put("/{document_id}", response_model=DocumentoResponse)
+@router.put("/{document_id}", response_model=DocumentResponse)
 async def update_document(
     document_id: UUID,
-    document_update: DocumentoUpdate,
+    document_update: DocumentUpdate,
     db: AsyncSession = Depends(get_db),
 ):
     """Update a document."""
     result = await db.execute(
-        select(Documento).where(Documento.id == document_id)
+        select(Document).where(Document.id == document_id)
     )
     document = result.scalar_one_or_none()
 
@@ -183,14 +183,14 @@ async def delete_document(
 ):
     """Delete a document (soft delete by changing status)."""
     result = await db.execute(
-        select(Documento).where(Documento.id == document_id)
+        select(Document).where(Document.id == document_id)
     )
     document = result.scalar_one_or_none()
 
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    document.status = "inativo"
+    document.status = "inactive"
     await db.commit()
 
     return {"message": "Document deleted successfully"}
