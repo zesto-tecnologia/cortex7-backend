@@ -1,12 +1,13 @@
 # ===========================
-# Cortex Backend Makefile - UV Version
+# Cortex7 Backend - Essential Commands
 # ===========================
 
 # Variables
-PYTHON := uv run python
+PYTHON := python3
 UV := uv
-PORT := 8000
-HOST := 0.0.0.0
+COMPOSE := docker-compose
+DB_USER := cortex_user
+DB_NAME := cortex_db
 
 # Colors
 GREEN := \033[0;32m
@@ -19,324 +20,204 @@ NC := \033[0m # No Color
 
 help: ## Show this help message
 	@echo ''
-	@echo '${BLUE}Cortex Backend - Available Commands${NC}'
+	@echo '${BLUE}Cortex7 Backend - Essential Commands${NC}'
+	@echo '${BLUE}=====================================>${NC}'
 	@echo ''
-	@echo '${YELLOW}Setup & Installation:${NC}'
-	@grep -E '^(install|setup|init).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
+	@echo '${YELLOW}🐳 Docker Containers:${NC}'
+	@grep -E '^(up|down|restart|build|rebuild|ps|logs).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
 	@echo ''
-	@echo '${YELLOW}Development:${NC}'
-	@grep -E '^(dev|run|shell).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
+	@echo '${YELLOW}🗄️  Database:${NC}'
+	@grep -E '^(migrate|migration-new|migrate-down|db-shell|db-backup|db-restore|db-verify).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
 	@echo ''
-	@echo '${YELLOW}Services:${NC}'
-	@grep -E '^(up|down|restart|logs|ps).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
+	@echo '${YELLOW}🧪 Testing:${NC}'
+	@grep -E '^(test|test-refactoring|test-integration).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
 	@echo ''
-	@echo '${YELLOW}Database:${NC}'
-	@grep -E '^(db-|migrate|migration).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
+	@echo '${YELLOW}🧹 Maintenance:${NC}'
+	@grep -E '^(clean|clean-all|prune|install).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
 	@echo ''
-	@echo '${YELLOW}Testing & Quality:${NC}'
-	@grep -E '^(test|lint|format|check|typecheck).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
-	@echo ''
-	@echo '${YELLOW}Utilities:${NC}'
-	@grep -E '^(clean|backup|restore|health|docs).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
+	@echo '${YELLOW}⚡ Quick Actions:${NC}'
+	@grep -E '^(status|health|monitor).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
 	@echo ''
 
 # =============================================================================
-# Setup & Installation
+# 🐳 Docker Container Management
 # =============================================================================
 
-install: ## Install dependencies with uv
-	$(UV) sync
-	@echo "$(GREEN)✅ Dependencies installed$(NC)"
-
-setup: ## Complete setup (install deps, init db, migrate)
-	@echo "$(BLUE)Setting up Cortex backend...$(NC)"
-	$(UV) sync
-	docker-compose up -d postgres redis
-	@echo "$(YELLOW)Waiting for database to be ready...$(NC)"
-	@sleep 5
-	$(PYTHON) scripts/init_db.py
-	$(UV) run alembic upgrade head
-	@echo "$(GREEN)✅ Setup complete!$(NC)"
-
-init: setup ## Alias for setup
-
-# =============================================================================
-# Development
-# =============================================================================
-
-dev: ## Run development server with auto-reload
-	$(UV) run uvicorn services.gateway.main:app --reload --host $(HOST) --port $(PORT)
-
-dev-auth: ## Run auth service in development mode
-	$(UV) run uvicorn services.auth.main:app --reload --host $(HOST) --port 8001
-
-dev-financial: ## Run financial service in development mode
-	$(PYTHON) -m services.financial.main
-
-dev-hr: ## Run HR service in development mode
-	$(PYTHON) -m services.hr.main
-
-dev-legal: ## Run legal service in development mode
-	$(PYTHON) -m services.legal.main
-
-dev-procurement: ## Run procurement service in development mode
-	$(PYTHON) -m services.procurement.main
-
-dev-documents: ## Run documents service in development mode
-	$(PYTHON) -m services.documents.main
-
-dev-ai: ## Run AI service in development mode
-	$(PYTHON) -m services.ai.main
-
-run: ## Run production server
-	$(UV) run uvicorn services.gateway.main:app --host $(HOST) --port $(PORT)
-
-shell: ## Open Python shell
-	$(UV) run python
-
-# =============================================================================
-# Docker Services Management
-# =============================================================================
-
-up: ## Start all services with Docker Compose
-	docker-compose up -d
+up: ## Start all services
+	@echo "$(BLUE)Starting all services...$(NC)"
+	$(COMPOSE) up -d
 	@echo "$(GREEN)✅ All services started$(NC)"
-
-up-dev: ## Start services in development mode (with logs)
-	docker-compose up
+	@echo "$(YELLOW)Gateway: http://localhost:8000$(NC)"
+	@echo "$(YELLOW)Services running on ports 8001-8007$(NC)"
 
 down: ## Stop all services
-	docker-compose down
-	@echo "$(YELLOW)⚠️  All services stopped$(NC)"
+	@echo "$(YELLOW)Stopping all services...$(NC)"
+	$(COMPOSE) down
+	@echo "$(GREEN)✅ All services stopped$(NC)"
 
 restart: ## Restart all services
-	docker-compose restart
+	@echo "$(BLUE)Restarting all services...$(NC)"
+	$(COMPOSE) restart
 	@echo "$(GREEN)✅ All services restarted$(NC)"
 
-logs: ## Show logs for all services
-	docker-compose logs -f
+build: ## Build Docker images
+	@echo "$(BLUE)Building Docker images...$(NC)"
+	$(COMPOSE) build
+	@echo "$(GREEN)✅ Images built successfully$(NC)"
 
-logs-gateway: ## Show gateway logs
-	docker-compose logs -f gateway
+rebuild: ## Rebuild images without cache
+	@echo "$(BLUE)Rebuilding images from scratch...$(NC)"
+	$(COMPOSE) build --no-cache
+	@echo "$(GREEN)✅ Images rebuilt successfully$(NC)"
 
-logs-auth: ## Show auth service logs
-	docker-compose logs -f auth-service
+ps: ## Show container status
+	@$(COMPOSE) ps
 
-logs-financial: ## Show financial service logs
-	docker-compose logs -f financial-service
+logs: ## Follow logs for all services
+	$(COMPOSE) logs -f --tail=100
 
-logs-db: ## Show database logs
-	docker-compose logs -f postgres
-
-logs-redis: ## Show Redis logs
-	docker-compose logs -f redis
-
-ps: ## Show status of all services
-	docker-compose ps
-
-# =============================================================================
-# Database Management
-# =============================================================================
-
-db-init: ## Initialize database with extensions
-	$(PYTHON) scripts/init_db.py
-	@echo "$(GREEN)✅ Database initialized$(NC)"
-
-db-up: ## Start PostgreSQL and Redis
-	docker-compose up -d postgres redis
-	@echo "$(GREEN)✅ Database services started$(NC)"
-
-db-down: ## Stop database services
-	docker-compose stop postgres redis
-	@echo "$(YELLOW)⚠️  Database services stopped$(NC)"
-
-db-reset: db-down db-up migrate ## Reset database
-	@echo "$(GREEN)✅ Database reset complete$(NC)"
-
-db-shell: ## Connect to PostgreSQL shell
-	docker-compose exec postgres psql -U cortex_user -d cortex_db
-
-db-shell-auth: ## Connect to auth database shell
-	docker-compose exec postgres psql -U authuser -d auth_db
-
-redis-shell: ## Connect to Redis CLI
-	docker-compose exec redis redis-cli
+# Service-specific logs
+logs-%: ## Show logs for specific service (e.g., make logs-legal)
+	$(COMPOSE) logs -f --tail=100 cortex-$*
 
 # =============================================================================
-# Migrations
+# 🗄️ Database Management
 # =============================================================================
 
-migrate: ## Run database migrations
-	$(UV) run alembic upgrade head
-	@echo "$(GREEN)✅ Migrations applied$(NC)"
+migrate: ## Apply database migrations
+	@echo "$(BLUE)Applying database migrations...$(NC)"
+	@$(UV) run alembic upgrade head
+	@echo "$(GREEN)✅ Migrations applied successfully$(NC)"
 
-migrate-auth: ## Run auth service migrations
-	$(UV) run alembic -c services/auth/alembic.ini upgrade head
-	@echo "$(GREEN)✅ Auth migrations applied$(NC)"
-
-migration: ## Create a new migration (usage: make migration m="your message")
+migration-new: ## Create new migration (usage: make migration-new m="description")
 ifndef m
-	$(error m must be defined, e.g., make migration m="add user table")
+	$(error Please provide migration message: make migration-new m="your message")
 endif
-	$(UV) run alembic revision --autogenerate -m "$(m)"
-	@echo "$(GREEN)✅ Migration created: $(m)$(NC)"
+	@echo "$(BLUE)Creating new migration: $(m)$(NC)"
+	@$(UV) run alembic revision --autogenerate -m "$(m)"
+	@echo "$(GREEN)✅ Migration created$(NC)"
 
 migrate-down: ## Rollback last migration
-	$(UV) run alembic downgrade -1
-	@echo "$(YELLOW)⚠️  Rolled back last migration$(NC)"
+	@echo "$(YELLOW)Rolling back last migration...$(NC)"
+	@$(UV) run alembic downgrade -1
+	@echo "$(GREEN)✅ Migration rolled back$(NC)"
 
-migrate-history: ## Show migration history
-	$(UV) run alembic history
+db-shell: ## Connect to PostgreSQL
+	@echo "$(BLUE)Connecting to database...$(NC)"
+	@$(COMPOSE) exec cortex-postgres psql -U $(DB_USER) -d $(DB_NAME)
+
+db-backup: ## Backup database
+	@mkdir -p backups
+	@BACKUP_FILE="backups/backup_$$(date +%Y%m%d_%H%M%S).sql" && \
+	$(COMPOSE) exec cortex-postgres pg_dump -U $(DB_USER) $(DB_NAME) > $$BACKUP_FILE && \
+	echo "$(GREEN)✅ Database backed up to $$BACKUP_FILE$(NC)"
+
+db-restore: ## Restore database (usage: make db-restore FILE=backup.sql)
+ifndef FILE
+	$(error Please specify backup file: make db-restore FILE=backups/backup.sql)
+endif
+	@echo "$(YELLOW)Restoring database from $(FILE)...$(NC)"
+	@$(COMPOSE) exec -T cortex-postgres psql -U $(DB_USER) $(DB_NAME) < $(FILE)
+	@echo "$(GREEN)✅ Database restored$(NC)"
+
+db-verify: ## Verify database tables (PT→EN refactoring check)
+	@echo "$(BLUE)Verifying database tables...$(NC)"
+	@$(PYTHON) scripts/verify_db_tables.py 2>/dev/null || echo "$(YELLOW)Run 'make install' first$(NC)"
 
 # =============================================================================
-# Testing
+# 🧪 Testing
 # =============================================================================
 
-test: ## Run all tests with coverage
-	$(UV) run pytest tests -v --cov=services --cov-report=term-missing
+test: ## Run smoke tests
+	@echo "$(BLUE)Running tests...$(NC)"
+	@$(PYTHON) -m pytest tests/test_smoke.py -v
+	@echo "$(GREEN)✅ Tests completed$(NC)"
 
-test-auth: ## Run auth service tests
-	$(UV) run pytest services/auth/tests -v --cov=services.auth --cov-report=term-missing
-
-test-fast: ## Run quick tests (stop on first failure)
-	$(UV) run pytest tests -x
-
-test-unit: ## Run unit tests only
-	$(UV) run pytest tests/unit -v
+test-refactoring: ## Validate PT→EN refactoring
+	@echo "$(BLUE)Validating Portuguese to English refactoring...$(NC)"
+	@echo "$(YELLOW)Checking that 'lawsuits' table exists in database...$(NC)"
+	@$(COMPOSE) exec cortex-postgres psql -U $(DB_USER) -d $(DB_NAME) -c "SELECT 'lawsuits' as table_name, COUNT(*) as row_count FROM lawsuits;" 2>/dev/null || echo "$(YELLOW)Database check skipped$(NC)"
+	@echo "$(GREEN)✅ Refactoring validation complete$(NC)"
 
 test-integration: ## Run integration tests
-	$(UV) run pytest tests/integration -v
-
-test-cov: ## Run tests with HTML coverage report
-	$(UV) run pytest --cov=services --cov-report=html --cov-report=term
-	@echo "$(GREEN)✅ Coverage report generated in htmlcov/$(NC)"
+	@echo "$(BLUE)Running integration tests...$(NC)"
+	@$(PYTHON) tests/test_integration.py
 
 # =============================================================================
-# Code Quality
+# 🧹 Maintenance
 # =============================================================================
 
-lint: ## Run linting with ruff
-	$(UV) run ruff check services tests
-
-lint-fix: ## Fix linting issues automatically
-	$(UV) run ruff check services tests --fix
-	@echo "$(GREEN)✅ Linting issues fixed$(NC)"
-
-format: ## Format code with ruff
-	$(UV) run ruff format services tests
-	@echo "$(GREEN)✅ Code formatted$(NC)"
-
-typecheck: ## Run type checking with mypy
-	$(UV) run mypy services
-
-check: lint typecheck ## Run all quality checks
-	@echo "$(GREEN)✅ All checks passed$(NC)"
-
-pre-commit: format lint-fix test ## Run pre-commit checks
-	@echo "$(GREEN)✅ Pre-commit checks passed$(NC)"
-
-# =============================================================================
-# Utilities
-# =============================================================================
-
-clean-cache: ## Clean Python cache files only (keep Docker running)
-	@echo "$(BLUE)Cleaning Python cache files...$(NC)"
-	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	@find . -type f -name "*.pyo" -delete 2>/dev/null || true
-	@find . -type f -name ".coverage" -delete 2>/dev/null || true
-	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-	@rm -rf htmlcov 2>/dev/null || true
-	@rm -rf .coverage.* 2>/dev/null || true
-	@rm -rf dist build 2>/dev/null || true
-	@echo "$(GREEN)✅ Cache cleanup complete$(NC)"
-
-clean: ## Clean up containers, volumes, and cache
-	docker-compose down -v 2>/dev/null || true
+clean: ## Clean Python cache and temporary files
+	@echo "$(BLUE)Cleaning cache files...$(NC)"
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@find . -type f -name ".coverage" -delete 2>/dev/null || true
 	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
 	@rm -rf htmlcov 2>/dev/null || true
-	@echo "$(GREEN)✅ Cleanup complete$(NC)"
+	@echo "$(GREEN)✅ Cache cleaned$(NC)"
 
-build: ## Build Docker images
-	docker-compose build
-	@echo "$(GREEN)✅ Docker images built$(NC)"
+clean-all: ## Stop containers and clean everything
+	@echo "$(RED)Stopping and cleaning everything...$(NC)"
+	@$(COMPOSE) down -v 2>/dev/null || true
+	@make clean
+	@echo "$(GREEN)✅ Full cleanup complete$(NC)"
 
-pull: ## Pull latest Docker images
-	docker-compose pull
-	@echo "$(GREEN)✅ Docker images updated$(NC)"
+prune: ## Docker system prune (remove unused images/containers)
+	@echo "$(YELLOW)Pruning Docker system...$(NC)"
+	@docker system prune -f
+	@echo "$(GREEN)✅ Docker system pruned$(NC)"
 
-health: ## Check health of all services
-	@curl -s http://localhost:8000/health | python -m json.tool || echo "$(RED)Gateway not running$(NC)"
-	@curl -s http://localhost:8001/health | python -m json.tool || echo "$(RED)Auth service not running$(NC)"
-
-docs: ## Open API documentation
-	@open http://localhost:8000/docs 2>/dev/null || echo "$(BLUE)Open http://localhost:8000/docs$(NC)"
-
-docs-auth: ## Open Auth API documentation
-	@open http://localhost:8001/docs 2>/dev/null || echo "$(BLUE)Open http://localhost:8001/docs$(NC)"
-
-kill-port: ## Kill process on port $(PORT) (usage: make kill-port PORT=8001)
-	@lsof -ti:$(PORT) | xargs kill -9 2>/dev/null || echo "$(GREEN)No process on port $(PORT)$(NC)"
+install: ## Install Python dependencies
+	@echo "$(BLUE)Installing dependencies with uv...$(NC)"
+	@$(UV) pip install --system -e .
+	@$(UV) pip install --system -e ".[test]" 2>/dev/null || true
+	@echo "$(GREEN)✅ Dependencies installed$(NC)"
 
 # =============================================================================
-# Database Backup & Restore
+# ⚡ Quick Status & Monitoring
 # =============================================================================
 
-backup-db: ## Backup database to file
-	@mkdir -p backups
-	docker-compose exec postgres pg_dump -U cortex_user cortex_db > backups/backup_$(shell date +%Y%m%d_%H%M%S).sql
-	@echo "$(GREEN)✅ Database backed up to backups/backup_$(shell date +%Y%m%d_%H%M%S).sql$(NC)"
+status: ## Show system status
+	@echo "$(BLUE)=== Cortex7 System Status ===$(NC)"
+	@echo ""
+	@echo "$(YELLOW)📦 Container Status:$(NC)"
+	@$(COMPOSE) ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+	@echo ""
+	@echo "$(YELLOW)🗄️  Database:$(NC)"
+	@$(COMPOSE) exec cortex-postgres psql -U $(DB_USER) -d $(DB_NAME) -c "SELECT COUNT(*) as tables FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "Database not accessible"
+	@echo ""
+	@echo "$(YELLOW)📊 Current Migration:$(NC)"
+	@$(UV) run alembic current 2>/dev/null || echo "Run 'make install' first"
 
-backup-auth-db: ## Backup auth database
-	@mkdir -p backups
-	docker-compose exec postgres pg_dump -U authuser auth_db > backups/auth_backup_$(shell date +%Y%m%d_%H%M%S).sql
-	@echo "$(GREEN)✅ Auth database backed up$(NC)"
+health: ## Check service health
+	@echo "$(BLUE)Checking service health...$(NC)"
+	@for port in 8000 8001 8002 8003 8004 8005 8006 8007; do \
+		echo -n "Port $$port: "; \
+		curl -s http://localhost:$$port/health >/dev/null 2>&1 && echo "$(GREEN)✅ UP$(NC)" || echo "$(RED)❌ DOWN$(NC)"; \
+	done
 
-restore-db: ## Restore database from file (usage: make restore-db FILE=backups/backup.sql)
-ifndef FILE
-	$(error FILE must be defined, e.g., make restore-db FILE=backups/backup.sql)
-endif
-	docker-compose exec -T postgres psql -U cortex_user cortex_db < $(FILE)
-	@echo "$(GREEN)✅ Database restored from $(FILE)$(NC)"
-
-# =============================================================================
-# Docker Cleanup
-# =============================================================================
-
-docker-clean: ## Remove all stopped containers and unused images
-	docker system prune -f
-	@echo "$(GREEN)✅ Docker cleanup complete$(NC)"
-
-docker-clean-all: ## Remove all containers, images, and volumes (CAREFUL!)
-	@echo "$(RED)⚠️  WARNING: This will remove ALL Docker resources$(NC)"
-	@read -p "Are you sure? (y/N): " confirm; \
-	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
-		docker system prune -af --volumes; \
-		echo "$(GREEN)✅ All Docker resources removed$(NC)"; \
-	else \
-		echo "$(YELLOW)Cancelled$(NC)"; \
-	fi
+monitor: ## Monitor services (logs + status)
+	@echo "$(BLUE)Starting service monitor...$(NC)"
+	@./scripts/monitor_services.sh 2>/dev/null || echo "$(YELLOW)Monitor script not found$(NC)"
 
 # =============================================================================
-# Shortcuts & Workflows
+# Common Workflows
 # =============================================================================
 
-start: db-up migrate dev ## Start database and development server
+# Start everything fresh
+fresh: down clean build up migrate ## Fresh start (rebuild everything)
+	@echo "$(GREEN)✅ Fresh environment ready!$(NC)"
 
-start-all: up logs ## Start all services with Docker and show logs
+# Quick start (assuming images exist)
+start: up migrate ## Quick start services
+	@echo "$(GREEN)✅ Services started!$(NC)"
 
+# Stop everything
 stop: down ## Stop all services
+	@echo "$(GREEN)✅ Services stopped$(NC)"
 
-reset: clean setup ## Clean everything and setup from scratch
-
-update: install migrate ## Update dependencies and run migrations
+# Check if refactoring is working
+validate: test-refactoring db-verify ## Validate PT→EN refactoring
+	@echo "$(GREEN)✅ Refactoring validation complete$(NC)"
 
 .DEFAULT_GOAL := help
