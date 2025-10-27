@@ -1,7 +1,7 @@
 """RefreshToken model for managing refresh tokens."""
 
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from services.auth.database import Base
@@ -50,7 +50,7 @@ class RefreshToken(Base, TimestampMixin):
 
     def is_valid(self) -> bool:
         """Check if the refresh token is valid."""
-        return not self.revoked and self.expires_at > datetime.utcnow()
+        return not self.revoked and self.expires_at > datetime.now(timezone.utc)
 
     def revoke(self) -> None:
         """Revoke the refresh token."""

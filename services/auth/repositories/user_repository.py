@@ -1,6 +1,6 @@
 """User repository for data access layer."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func
@@ -159,7 +159,7 @@ class UserRepository:
         if not update_data:
             return await self.get_by_id(user_id)
 
-        update_data['updated_at'] = datetime.utcnow()
+        update_data['updated_at'] = datetime.now(timezone.utc)
 
         await self.session.execute(
             update(User)
@@ -185,7 +185,7 @@ class UserRepository:
         if not fields:
             return await self.get_by_id(user_id)
 
-        fields['updated_at'] = datetime.utcnow()
+        fields['updated_at'] = datetime.now(timezone.utc)
 
         await self.session.execute(
             update(User)
@@ -208,7 +208,7 @@ class UserRepository:
         await self.session.execute(
             update(User)
             .where(User.id == user_id, User.deleted_at.is_(None))
-            .values(email_verified=True, updated_at=datetime.utcnow())
+            .values(email_verified=True, updated_at=datetime.now(timezone.utc))
         )
         await self.session.flush()
 
@@ -227,7 +227,7 @@ class UserRepository:
         await self.session.execute(
             update(User)
             .where(User.id == user_id, User.deleted_at.is_(None))
-            .values(role=new_role, updated_at=datetime.utcnow())
+            .values(role=new_role, updated_at=datetime.now(timezone.utc))
         )
         await self.session.flush()
 
@@ -245,7 +245,7 @@ class UserRepository:
         result = await self.session.execute(
             update(User)
             .where(User.id == user_id, User.deleted_at.is_(None))
-            .values(deleted_at=datetime.utcnow(), updated_at=datetime.utcnow())
+            .values(deleted_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc))
         )
         await self.session.flush()
 
@@ -263,7 +263,7 @@ class UserRepository:
         await self.session.execute(
             update(User)
             .where(User.id == user_id)
-            .values(deleted_at=None, updated_at=datetime.utcnow())
+            .values(deleted_at=None, updated_at=datetime.now(timezone.utc))
         )
         await self.session.flush()
 

@@ -276,7 +276,52 @@ services:
     volumes:
       - ./:/app
 
-  # Celery Worker
+  # Presentation Service
+  presentation-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.presentation
+    container_name: cortex-presentation
+    environment:
+      - SERVICE_NAME=presentation
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVICE_PORT=8008
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      # - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      # - GOOGLE_MODEL=${GOOGLE_MODEL}
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - ANTHROPIC_MODEL=${ANTHROPIC_MODEL}
+      # - OLLAMA_URL=${OLLAMA_URL}
+      # - OLLAMA_MODEL=${OLLAMA_MODEL}
+      # - PEXELS_API_KEY=${PEXELS_API_KEY}
+      - IMAGE_PROVIDER=${IMAGE_PROVIDER}
+      - LLM=${LLM}
+      - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
+      - USER_CONFIG_PATH=${USER_CONFIG_PATH}
+      - APP_DATA_DIRECTORY=/app_data
+      - TEMP_DIRECTORY=/tmp/presenton
+    ports:
+      - "8008:8008"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+      - presentation_data:/app_data
+
   celery-worker:
     build:
       context: .
@@ -341,3 +386,4 @@ networks:
 
 volumes:
   postgres_data:
+  presentation_data:
