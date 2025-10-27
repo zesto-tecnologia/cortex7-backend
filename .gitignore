@@ -217,6 +217,9 @@ docker-compose.override.yml
 # Project Specific
 # ===========================
 
+# ChromaDB vector database
+chroma/
+
 # Old auth service directory (can be removed)
 services/cortex7-api-auth/
 

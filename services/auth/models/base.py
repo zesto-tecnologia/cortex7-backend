@@ -1,6 +1,6 @@
 """Base model class for SQLAlchemy models."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 from services.auth.database import Base
@@ -37,4 +37,4 @@ class SoftDeleteMixin:
 
     def soft_delete(self) -> None:
         """Soft delete the record."""
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)

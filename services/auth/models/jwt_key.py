@@ -1,7 +1,7 @@
 """JWTKey model for managing JWT signing keys."""
 
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import String, Boolean, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from services.auth.database import Base
@@ -45,7 +45,7 @@ class JWTKey(Base, TimestampMixin):
 
     def is_valid(self) -> bool:
         """Check if the key is valid for use."""
-        return self.active and self.expires_at > datetime.utcnow()
+        return self.active and self.expires_at > datetime.now(timezone.utc)
 
     def deactivate(self) -> None:
         """Deactivate the key."""

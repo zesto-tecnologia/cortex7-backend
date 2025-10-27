@@ -1,6 +1,6 @@
 """Audit log repository for data access layer."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
@@ -276,7 +276,7 @@ class AuditLogRepository:
         Returns:
             Count of failed login attempts
         """
-        since = datetime.utcnow() - timedelta(minutes=minutes)
+        since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
 
         query = select(func.count(AuditLog.id)).where(
             AuditLog.action == 'failed_login',
@@ -303,7 +303,7 @@ class AuditLogRepository:
         Returns:
             Number of logs deleted
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=older_than_days)
 
         result = await self.session.execute(
             delete(AuditLog).where(AuditLog.timestamp < cutoff_date)
