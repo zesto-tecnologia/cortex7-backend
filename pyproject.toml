@@ -73,6 +73,23 @@ dependencies = [
     # Utilities
     "python-dotenv>=1.0.0",
     "greenlet>=3.2.4",
+
+    # Presentation Service Dependencies
+    "aiohttp>=3.12.15",
+    "aiomysql>=0.2.0",
+    "aiosqlite>=0.21.0",
+    "anthropic>=0.60.0",
+    "chromadb>=1.0.15",
+    "dirtyjson>=1.0.8",
+    "docling>=2.43.0",
+    "fastmcp>=2.11.0",
+    "google-genai>=1.28.0",
+    "nltk>=3.9.1",
+    "pathvalidate>=3.3.1",
+    "pdfplumber>=0.11.7",
+    "pytest>=8.4.1",
+    "python-pptx>=1.0.2",
+    "sqlmodel>=0.0.24",
 ]
 
 [project.optional-dependencies]
@@ -172,6 +189,9 @@ branch = true
 precision = 2
 show_missing = true
 skip_covered = false
+
+[[tool.uv.index]]
+url = "https://download.pytorch.org/whl/cpu"
 
 [dependency-groups]
 dev = [

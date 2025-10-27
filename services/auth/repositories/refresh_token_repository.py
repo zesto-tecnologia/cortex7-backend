@@ -1,6 +1,6 @@
 """Refresh token repository for data access layer."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func
@@ -37,7 +37,7 @@ class RefreshTokenRepository:
         token = RefreshToken(
             user_id=user_id,
             token_hash=token_hash,
-            expires_at=datetime.utcnow() + timedelta(days=expires_days)
+            expires_at=datetime.now(timezone.utc) + timedelta(days=expires_days)
         )
         self.session.add(token)
         await self.session.flush()
@@ -106,7 +106,7 @@ class RefreshTokenRepository:
             select(RefreshToken).where(
                 RefreshToken.token_hash == token_hash,
                 RefreshToken.revoked == False,
-                RefreshToken.expires_at > datetime.utcnow()
+                RefreshToken.expires_at > datetime.now(timezone.utc)
             )
         )
         return result.scalar_one_or_none()
@@ -149,7 +149,7 @@ class RefreshTokenRepository:
             query = query.where(RefreshToken.revoked == False)
 
         if not include_expired:
-            query = query.where(RefreshToken.expires_at > datetime.utcnow())
+            query = query.where(RefreshToken.expires_at > datetime.now(timezone.utc))
 
         query = query.order_by(RefreshToken.created_at.desc())
 
@@ -180,7 +180,7 @@ class RefreshTokenRepository:
             query = query.where(RefreshToken.revoked == False)
 
         if not include_expired:
-            query = query.where(RefreshToken.expires_at > datetime.utcnow())
+            query = query.where(RefreshToken.expires_at > datetime.now(timezone.utc))
 
         result = await self.session.execute(query)
         return result.scalar() or 0
@@ -251,7 +251,7 @@ class RefreshTokenRepository:
         """
         result = await self.session.execute(
             delete(RefreshToken).where(
-                RefreshToken.expires_at < datetime.utcnow()
+                RefreshToken.expires_at < datetime.now(timezone.utc)
             )
         )
         await self.session.flush()
@@ -267,7 +267,7 @@ class RefreshTokenRepository:
         Returns:
             Number of tokens deleted
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=older_than_days)
 
         result = await self.session.execute(
             delete(RefreshToken).where(
@@ -292,7 +292,7 @@ class RefreshTokenRepository:
             select(func.count(RefreshToken.id)).where(
                 RefreshToken.token_hash == token_hash,
                 RefreshToken.revoked == False,
-                RefreshToken.expires_at > datetime.utcnow()
+                RefreshToken.expires_at > datetime.now(timezone.utc)
             )
         )
         count = result.scalar() or 0

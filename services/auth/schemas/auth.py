@@ -1,6 +1,6 @@
 """Authentication schemas for request/response validation."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from typing import Optional, Any
@@ -153,7 +153,7 @@ class ErrorResponse(BaseModel):
 
     detail: str
     status_code: int
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class UserRegisterResponse(BaseModel):

@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies including LibreOffice and Chromium
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    curl \
+    libreoffice \
+    fontconfig \
+    chromium \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables for Puppeteer
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Copy project files
+COPY pyproject.toml README.md ./
+
+# Install dependencies using uv (system-wide, no venv needed in Docker)
+# Use unsafe-best-match to allow searching certifi across all indexes (PyTorch and PyPI)
+RUN uv pip install --system --index-strategy unsafe-best-match -e .
+
+# Copy application code
+COPY . .
+
+# The service to run will be determined by the SERVICE_NAME environment variable
+CMD python -m services.${SERVICE_NAME}.main
