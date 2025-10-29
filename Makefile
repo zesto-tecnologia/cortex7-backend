@@ -4,7 +4,8 @@
 
 # Variables
 PYTHON := python3
-UV := uv --index-strategy unsafe-best-match
+UV := uv
+UV_RUN := uv run --index-strategy unsafe-best-match
 COMPOSE := docker-compose
 DB_USER := cortex_user
 DB_NAME := cortex_db
@@ -86,7 +87,7 @@ logs-%: ## Show logs for specific service (e.g., make logs-legal)
 
 migrate: ## Apply database migrations
 	@echo "$(BLUE)Applying database migrations...$(NC)"
-	@$(UV) run alembic upgrade head
+	@$(UV_RUN) alembic upgrade head
 	@echo "$(GREEN)✅ Migrations applied successfully$(NC)"
 
 migration-new: ## Create new migration (usage: make migration-new m="description")
@@ -94,12 +95,12 @@ ifndef m
 	$(error Please provide migration message: make migration-new m="your message")
 endif
 	@echo "$(BLUE)Creating new migration: $(m)$(NC)"
-	@$(UV) run alembic revision --autogenerate -m "$(m)"
+	@$(UV_RUN) alembic revision --autogenerate -m "$(m)"
 	@echo "$(GREEN)✅ Migration created$(NC)"
 
 migrate-down: ## Rollback last migration
 	@echo "$(YELLOW)Rolling back last migration...$(NC)"
-	@$(UV) run alembic downgrade -1
+	@$(UV_RUN) alembic downgrade -1
 	@echo "$(GREEN)✅ Migration rolled back$(NC)"
 
 db-shell: ## Connect to PostgreSQL
@@ -187,7 +188,7 @@ status: ## Show system status
 	@$(COMPOSE) exec cortex-postgres psql -U $(DB_USER) -d $(DB_NAME) -c "SELECT COUNT(*) as tables FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "Database not accessible"
 	@echo ""
 	@echo "$(YELLOW)📊 Current Migration:$(NC)"
-	@$(UV) run alembic current 2>/dev/null || echo "Run 'make install' first"
+	@$(UV_RUN) alembic current 2>/dev/null || echo "Run 'make install' first"
 
 health: ## Check service health
 	@echo "$(BLUE)Checking service health...$(NC)"
