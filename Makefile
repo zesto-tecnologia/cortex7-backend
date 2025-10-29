@@ -4,7 +4,7 @@
 
 # Variables
 PYTHON := python3
-UV := uv
+UV := uv --index-strategy unsafe-best-match
 COMPOSE := docker-compose
 DB_USER := cortex_user
 DB_NAME := cortex_db
