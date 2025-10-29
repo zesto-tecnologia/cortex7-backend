@@ -152,6 +152,15 @@ venv.bak/
 .env.bak
 .env.backup
 
+# Private data directory (sensitive files not tracked by git)
+private-data/
+
+# Sensitive Excel files with financial and employee data
+financeiro.xlsx
+funcionarios-pd7.xlsx
+shared/assets/financeiro.xlsx
+shared/assets/funcionarios-pd7.xlsx
+
 # JWT Keys and Certificates
 keys/
 *.pem
