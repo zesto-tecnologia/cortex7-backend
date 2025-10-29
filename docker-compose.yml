@@ -51,6 +51,13 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SECRET_KEY=${SECRET_KEY}
+      - AUTH_SERVICE_URL=http://cortex-auth:8001
+      - FINANCIAL_SERVICE_URL=http://cortex-financial:8002
+      - HR_SERVICE_URL=http://cortex-hr:8003
+      - LEGAL_SERVICE_URL=http://cortex-legal:8004
+      - PROCUREMENT_SERVICE_URL=http://cortex-procurement:8005
+      - DOCUMENTS_SERVICE_URL=http://cortex-documents:8006
+      - AI_SERVICE_URL=http://cortex-ai:8007
     ports:
       - "8000:8000"
     depends_on:

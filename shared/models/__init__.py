@@ -19,6 +19,14 @@ from shared.models.legal import Contract, Lawsuit
 from shared.models.procurement import PurchaseOrder
 from shared.models.workflow import CorporateWorkflow, Task
 from shared.models.audit import AgentLog, AuditTrail, EmbeddingCache, AgentConfig
+from shared.models.datawarehouse import (
+    DimClient,
+    DimCategory,
+    DimCostCenter,
+    DimDepartment,
+    DimDate,
+    FactFinancialTransaction,
+)
 
 __all__ = [
     # Company
@@ -51,4 +59,11 @@ __all__ = [
     "AuditTrail",
     "EmbeddingCache",
     "AgentConfig",
+    # Data Warehouse
+    "DimClient",
+    "DimCategory",
+    "DimCostCenter",
+    "DimDepartment",
+    "DimDate",
+    "FactFinancialTransaction",
 ]

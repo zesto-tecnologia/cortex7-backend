@@ -14,7 +14,8 @@ class EmployeeBase(BaseModel):
 
     company_id: UUID
     user_id: Optional[UUID] = None
-    cpf: str = Field(..., min_length=11, max_length=11)
+    name: Optional[str] = Field(None, max_length=255)
+    tax_id: str = Field(..., min_length=11, max_length=11)
     birth_date: Optional[date] = None
     hire_date: date
     termination_date: Optional[date] = None

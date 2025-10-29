@@ -58,12 +58,13 @@ async def search_employees(
     q: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Search employees by name or CPF."""
+    """Search employees by name, tax_id, or position."""
     query = select(Employee).where(
         Employee.company_id == company_id,
         or_(
-            Employee.cpf.contains(q),
-            Employee.cargo.ilike(f"%{q}%")
+            Employee.name.ilike(f"%{q}%"),
+            Employee.tax_id.contains(q),
+            Employee.position.ilike(f"%{q}%")
         )
     )
 
@@ -100,12 +101,12 @@ async def create_employee(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new employee."""
-    # Check if CPF already exists
+    # Check if tax_id already exists
     existing = await db.execute(
-        select(Employee).where(Employee.cpf == employee.cpf)
+        select(Employee).where(Employee.tax_id == employee.tax_id)
     )
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="CPF already registered")
+        raise HTTPException(status_code=400, detail="Tax ID already registered")
 
     db_employee = Employee(**employee.dict())
     db.add(db_employee)

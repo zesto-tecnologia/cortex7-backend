@@ -16,6 +16,7 @@ class Employee(Base, BaseModelMixin):
 
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id", ondelete="SET NULL"))
+    name = Column(String(255), index=True)
     tax_id = Column(String(11), unique=True, nullable=False, index=True)
     birth_date = Column(Date)
     hire_date = Column(Date, nullable=False)

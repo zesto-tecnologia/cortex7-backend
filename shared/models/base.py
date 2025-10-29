@@ -17,8 +17,8 @@ class UUIDMixin:
 class TimestampMixin:
     """Mixin for created_at and updated_at timestamps."""
 
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
 class BaseModelMixin(UUIDMixin, TimestampMixin):

@@ -91,6 +91,8 @@ async def gateway_proxy(request: Request, path: str):
     """
     Proxy requests to appropriate microservices.
     """
+    logger.info(f"🔍 Gateway received request: {request.method} /{path}")
+
     # Determine which service to route to
     service_url = None
     for route_prefix, url in SERVICE_ROUTES.items():
@@ -107,6 +109,7 @@ async def gateway_proxy(request: Request, path: str):
 
     # Build the target URL
     target_url = f"{service_url}{service_path}"
+    logger.info(f"🎯 Routing to: {target_url}")
 
     # Get query parameters
     query_params = dict(request.query_params)
@@ -122,11 +125,15 @@ async def gateway_proxy(request: Request, path: str):
 
     try:
         # Check if this is a streaming endpoint
-        is_streaming = "/stream" in path
+        is_streaming = "stream" in path
+        logger.info(f"🔎 Streaming check: path='{path}', is_streaming={is_streaming}")
 
         if is_streaming:
+            logger.info(f"🌊 STREAMING REQUEST DETECTED: {path} -> {target_url}")
             # For streaming endpoints, use StreamingResponse
             async def stream_proxy():
+                logger.info(f"🚀 Starting stream proxy for {target_url}")
+                chunk_count = 0
                 async with httpx.AsyncClient(follow_redirects=True) as client:
                     async with client.stream(
                         method=request.method,
@@ -136,8 +143,13 @@ async def gateway_proxy(request: Request, path: str):
                         content=body,
                         timeout=60.0,  # Longer timeout for streaming
                     ) as response:
+                        logger.info(f"📡 Stream response status: {response.status_code}")
                         async for chunk in response.aiter_bytes():
+                            chunk_count += 1
+                            if chunk_count % 10 == 0:
+                                logger.info(f"📦 Streamed {chunk_count} chunks so far...")
                             yield chunk
+                logger.info(f"✅ Stream completed. Total chunks: {chunk_count}")
 
             return StreamingResponse(
                 stream_proxy(),
