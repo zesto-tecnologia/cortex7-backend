@@ -17,7 +17,8 @@ ENV PATH="/root/.local/bin:${PATH}"
 COPY pyproject.toml README.md ./
 
 # Install dependencies using uv (system-wide, no venv needed in Docker)
-RUN uv pip install --system -e .
+# Use unsafe-best-match to consider all versions from all indexes (PyTorch + PyPI)
+RUN uv pip install --system --index-strategy unsafe-best-match -e .
 
 # Copy application code
 COPY . .
