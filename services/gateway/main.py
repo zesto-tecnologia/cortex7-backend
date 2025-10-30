@@ -6,11 +6,13 @@ import httpx
 import logging
 import uvicorn
 from typing import Any, Dict
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from shared.config.settings import settings
+from cortex_auth import require_auth, require_admin, get_current_user
+from cortex_auth.models import User
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -86,6 +88,59 @@ async def health_check():
     }
 
 
+@app.get("/api/profile")
+@require_auth
+async def get_user_profile(user: User = Depends(get_current_user)):
+    """
+    Get current user profile (authenticated route example).
+
+    This demonstrates cortex-auth integration using both decorator and dependency.
+    """
+    return {
+        "user_id": str(user.user_id),
+        "email": user.email,
+        "name": user.name,
+        "roles": user.roles,
+        "permissions": user.permissions,
+    }
+
+
+@app.get("/api/admin/services")
+@require_admin
+async def admin_service_status(request: Request):
+    """
+    Admin-only endpoint to get detailed service status.
+
+    Requires admin role to access.
+    """
+    user = request.state.user
+    logger.info(f"Admin {user.email} accessing service status")
+
+    services_info = {}
+    async with httpx.AsyncClient() as client:
+        for service_path, service_url in SERVICE_ROUTES.items():
+            try:
+                response = await client.get(f"{service_url}/health", timeout=5.0)
+                services_info[service_path] = {
+                    "url": service_url,
+                    "status": "healthy" if response.status_code == 200 else "unhealthy",
+                    "status_code": response.status_code,
+                    "response_time_ms": response.elapsed.total_seconds() * 1000,
+                }
+            except Exception as e:
+                services_info[service_path] = {
+                    "url": service_url,
+                    "status": "unreachable",
+                    "error": str(e),
+                }
+
+    return {
+        "admin": user.email,
+        "services": services_info,
+        "timestamp": httpx._utils.get_utc_now().isoformat(),
+    }
+
+
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def gateway_proxy(request: Request, path: str):
     """
@@ -117,6 +172,10 @@ async def gateway_proxy(request: Request, path: str):
     # Get headers (excluding host)
     headers = dict(request.headers)
     headers.pop("host", None)
+
+    # Forward authentication cookies to downstream services
+    # This ensures that authenticated requests maintain their auth context
+    # The downstream services can use cortex-auth to validate the same token
 
     # Get body for POST/PUT/PATCH requests
     body = None
