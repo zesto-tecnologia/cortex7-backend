@@ -1,0 +1,620 @@
+{
+	"info": {
+		"_postman_id": "cortex-auth-service-collection",
+		"name": "Cortex-7 Auth Service",
+		"description": "Complete API collection for Cortex-7 Authentication Service\n\n## Base URL\nDevelopment: http://localhost:8001\nDocker: http://localhost:8001\n\n## Authentication\nMost endpoints require Bearer token authentication.\nUse the Login endpoint to obtain tokens.\n\n## Token Management\n- Access Token: Short-lived JWT (10 minutes)\n- Refresh Token: Long-lived token (7 days) stored in HTTP-only cookie\n- Use Refresh endpoint to get new tokens before expiration",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health & Status",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						},
+						"description": "Basic health check endpoint. Returns 200 if service is running."
+					},
+					"response": []
+				},
+				{
+					"name": "Readiness Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/ready",
+							"host": ["{{base_url}}"],
+							"path": ["ready"]
+						},
+						"description": "Comprehensive readiness check. Validates all service dependencies:\n- PostgreSQL database\n- Redis cache\n- Supabase Auth service"
+					},
+					"response": []
+				},
+				{
+					"name": "Root",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						},
+						"description": "Service information endpoint"
+					},
+					"response": []
+				}
+			],
+			"description": "Health and status check endpoints"
+		},
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save user_id from response",
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    if (response.user_id) {",
+									"        pm.environment.set('user_id', response.user_id);",
+									"        console.log('User registered successfully. ID: ' + response.user_id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"invite_code\": \"your-invite-code-here\",\n  \"email\": \"user@example.com\",\n  \"name\": \"Test User\",\n  \"password\": \"SecurePass123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "register"]
+						},
+						"description": "Register a new user account with invite code.\n\n**Requirements:**\n- **invite_code**: Valid invite code (required)\n- **email**: Must be unique and valid\n- **name**: 1-255 characters\n- **password**: Minimum 8 characters with at least:\n  - 1 uppercase letter\n  - 1 lowercase letter\n  - 1 digit\n\n**Response:**\n- 201: User created successfully\n- 403: Invalid, used, expired, or revoked invite code\n- 409: Email already exists\n- 400: Invalid input"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save access token from response",
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.access_token) {",
+									"        pm.environment.set('access_token', response.access_token);",
+									"        console.log('Login successful. Token saved.');",
+									"    }",
+									"    if (response.user && response.user.id) {",
+									"        pm.environment.set('user_id', response.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "login"]
+						},
+						"description": "Authenticate user and receive JWT tokens.\n\n**Returns:**\n- Access Token: JWT for API authorization (10 min expiry)\n- Refresh Token: Set as HTTP-only cookie (7 days expiry)\n- User profile information\n\n**Response Codes:**\n- 200: Login successful\n- 401: Invalid credentials\n- 403: Account not verified"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save new access token",
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.access_token) {",
+									"        pm.environment.set('access_token', response.access_token);",
+									"        console.log('Token refreshed successfully.');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/refresh",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "refresh"]
+						},
+						"description": "Exchange refresh token for new access token pair.\n\n**Security Features:**\n- Automatic token rotation\n- Token reuse detection\n- Refresh token stored in HTTP-only cookie\n\n**Response Codes:**\n- 200: New tokens issued\n- 401: Invalid refresh token\n- 403: Token reuse detected (security breach)"
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "logout"]
+						},
+						"description": "Logout user and revoke tokens.\n\n**Actions:**\n- Revokes refresh token\n- Clears HTTP-only cookie\n- Invalidates current session\n\n**Response:**\n- 204: Logout successful (no content)"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"verification-token-here\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/verify-email",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "verify-email"]
+						},
+						"description": "Verify user email address using token from verification email.\n\n**Note:** Currently returns placeholder response. Full implementation pending."
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/forgot-password",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "forgot-password"]
+						},
+						"description": "Request password reset email.\n\n**Security:**\n- Always returns success message (prevents email enumeration)\n- Rate limited to prevent abuse\n- Token expires after 1 hour\n\n**Response:**\n- 200: Always returns success message"
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"reset-token-from-email\",\n  \"new_password\": \"NewSecurePass123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/reset-password",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "reset-password"]
+						},
+						"description": "Reset password using token from email.\n\n**Requirements:**\n- Valid reset token from email\n- New password must meet strength requirements\n\n**Response Codes:**\n- 200: Password reset successful\n- 400: Invalid or expired token\n- 422: Invalid password format"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User (Testing)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/delete-user",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "delete-user"]
+						},
+						"description": "Delete user from both Supabase and local database.\n\n**WARNING:** This endpoint is for testing/development only.\n- Permanently deletes user from Supabase auth\n- Permanently deletes user from local database\n- Cannot be undone\n\n**Production Recommendation:**\nImplement soft delete or account deactivation instead.\n\n**Response Codes:**\n- 200: User deleted successfully\n- 404: User not found\n- 500: Deletion failed"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication and authorization endpoints"
+		},
+		{
+			"name": "User Management",
+			"item": [
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "users", "me"]
+						},
+						"description": "Get authenticated user's profile information.\n\n**Requires:** Valid access token\n\n**Returns:**\n- User ID\n- Email\n- Name\n- Role\n- Email verification status\n- Account creation/update timestamps"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Current User",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"newemail@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "users", "me"]
+						},
+						"description": "Update authenticated user's profile.\n\n**Requires:** Valid access token\n\n**Updatable Fields:**\n- name (optional): 1-255 characters\n- email (optional): Valid email format\n\n**Note:** Email changes may require re-verification."
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"current_password\": \"SecurePass123\",\n  \"new_password\": \"NewSecurePass123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/me/change-password",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "users", "me", "change-password"]
+						},
+						"description": "Change user password.\n\n**Requires:**\n- Valid access token\n- Current password verification\n\n**New Password Requirements:**\n- Minimum 8 characters\n- At least 1 uppercase letter\n- At least 1 lowercase letter\n- At least 1 digit\n\n**Response:**\n- 204: Password changed successfully (no content)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Permissions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/permissions",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "users", "permissions"]
+						},
+						"description": "Get current user's permissions.\n\n**Requires:** Valid access token\n\n**Returns:**\nList of permissions based on user role:\n- read:own_data\n- write:own_data\n- delete:own_data\n- admin:* (for admin users)"
+					},
+					"response": []
+				}
+			],
+			"description": "User profile and account management endpoints"
+		},
+		{
+			"name": "Admin",
+			"item": [
+				{
+					"name": "Create Invite Code",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save invite code from response",
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    if (response.code) {",
+									"        pm.environment.set('invite_code', response.code);",
+									"        console.log('Invite code created: ' + response.code);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"expires_in_days\": 7\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/invites",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "invites"]
+						},
+						"description": "Generate a new invite code for user registration.\n\n**Requires:** Admin role (authentication required)\n\n**Parameters:**\n- expires_in_days: Number of days until expiration (1-365, default: 7)\n\n**Returns:**\n- Cryptographically secure invite code (32 bytes)\n- Creation and expiration timestamps\n- Creator ID\n- Status: pending/used/expired/revoked\n\n**Response Codes:**\n- 201: Invite code created successfully\n- 401: Unauthorized\n- 500: Creation failed"
+					},
+					"response": []
+				},
+				{
+					"name": "List Invite Codes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/invites?status_filter=pending&limit=50&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "invites"],
+							"query": [
+								{
+									"key": "status_filter",
+									"value": "pending",
+									"description": "Filter by status: pending, used, expired, revoked"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Maximum results (1-100)"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Pagination offset"
+								}
+							]
+						},
+						"description": "List all invite codes with optional filtering.\n\n**Requires:** Admin/Manager role\n\n**Query Parameters:**\n- status_filter (optional): pending, used, expired, revoked\n- limit: 1-100 (default: 50)\n- offset: Pagination offset (default: 0)\n\n**Returns:**\n- List of invite codes with metadata\n- Total count\n- Pagination info\n\n**Response Codes:**\n- 200: Success\n- 401: Unauthorized\n- 500: Listing failed"
+					},
+					"response": []
+				},
+				{
+					"name": "Revoke Invite Code",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/invites/{{invite_code}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "invites", "{{invite_code}}"]
+						},
+						"description": "Revoke an invite code to prevent its use.\n\n**Requires:** Admin role\n\n**Parameters:**\n- code: The invite code to revoke (in URL path)\n\n**Response Codes:**\n- 204: Invite code revoked successfully (no content)\n- 404: Invite code not found\n- 401: Unauthorized\n- 500: Revocation failed"
+					},
+					"response": []
+				},
+				{
+					"name": "List Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users?limit=50&offset=0&role=user&search=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Maximum results (1-100)"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Pagination offset"
+								},
+								{
+									"key": "role",
+									"value": "user",
+									"description": "Filter by role: user, admin, super_admin"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search by email or name"
+								}
+							]
+						},
+						"description": "List all users with pagination and filtering.\n\n**Requires:** Admin/Manager role\n\n**Query Parameters:**\n- limit: 1-100 (default: 50)\n- offset: Pagination offset (default: 0)\n- role (optional): Filter by role\n- search (optional): Search by email or name\n\n**Returns:**\n- List of users with profile info\n- Total count\n- Pagination info\n\n**Response Codes:**\n- 200: Success\n- 401: Unauthorized\n- 500: Listing failed"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Role",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"role\": \"admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users/{{user_id}}/roles",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users", "{{user_id}}", "roles"]
+						},
+						"description": "Update a user's role.\n\n**Requires:** Admin role\n\n**Parameters:**\n- user_id: UUID of the user to update (in URL path)\n- role: New role value (user, admin, super_admin)\n\n**Valid Roles:**\n- user: Regular user\n- admin: Administrator\n- super_admin: Super administrator\n\n**Response Codes:**\n- 200: Role updated successfully\n- 400: Invalid role\n- 404: User not found\n- 401: Unauthorized\n- 500: Update failed"
+					},
+					"response": []
+				}
+			],
+			"description": "Admin endpoints for invite code and user management"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{access_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8001",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "invite_code",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

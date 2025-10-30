@@ -78,6 +78,13 @@ async def register(
             message=result["message"]
         )
 
+    except ValueError as e:
+        # Handle invalid invite code
+        logger.warning(f"invalid_invite_code - email={request.email}, error={str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
     except UserExistsError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

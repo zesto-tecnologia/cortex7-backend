@@ -237,9 +237,9 @@ services/cortex7-api-auth/
 # !migrations/versions/__init__.py
 
 # Documentation directories (project specific)
-docs/
+# docs/
 k8s/
-tasks/
+
 
 # ===========================
 # Type checking & Linting
@@ -287,3 +287,4 @@ desktop.ini
 # MCP configuration with sensitive data
 .env.mcp
 .mcp.json
+services/auth/scripts/create_super_admin.py

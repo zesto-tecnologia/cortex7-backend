@@ -89,6 +89,74 @@ class TestAccessTokenGeneration:
 
         assert payload["company_id"] == str(company_id)
 
+    @pytest.mark.asyncio
+    async def test_user_role_token_lifetime_60_minutes(self, jwt_service: JWTService, test_user: User):
+        """Test regular user token has 60-minute (3600s) lifetime."""
+        token, payload = await jwt_service.create_access_token(
+            user_id=test_user.id,
+            email=test_user.email,
+            role="user"  # Regular user role
+        )
+
+        exp = datetime.fromtimestamp(payload["exp"])
+        iat = datetime.fromtimestamp(payload["iat"])
+        lifetime_seconds = (exp - iat).total_seconds()
+
+        # Should be 60 minutes = 3600 seconds (±10s tolerance)
+        assert 3590 <= lifetime_seconds <= 3610, f"Expected ~3600s, got {lifetime_seconds}s"
+        assert payload["role"] == "user"
+
+    @pytest.mark.asyncio
+    async def test_admin_role_token_lifetime_30_minutes(self, jwt_service: JWTService, admin_user: User):
+        """Test admin token has 30-minute (1800s) lifetime."""
+        token, payload = await jwt_service.create_access_token(
+            user_id=admin_user.id,
+            email=admin_user.email,
+            role="admin"  # Admin role
+        )
+
+        exp = datetime.fromtimestamp(payload["exp"])
+        iat = datetime.fromtimestamp(payload["iat"])
+        lifetime_seconds = (exp - iat).total_seconds()
+
+        # Should be 30 minutes = 1800 seconds (±10s tolerance)
+        assert 1790 <= lifetime_seconds <= 1810, f"Expected ~1800s, got {lifetime_seconds}s"
+        assert payload["role"] == "admin"
+
+    @pytest.mark.asyncio
+    async def test_super_admin_role_token_lifetime_30_minutes(self, jwt_service: JWTService, super_admin_user: User):
+        """Test super_admin token has 30-minute (1800s) lifetime."""
+        token, payload = await jwt_service.create_access_token(
+            user_id=super_admin_user.id,
+            email=super_admin_user.email,
+            role="super_admin"  # Super admin role
+        )
+
+        exp = datetime.fromtimestamp(payload["exp"])
+        iat = datetime.fromtimestamp(payload["iat"])
+        lifetime_seconds = (exp - iat).total_seconds()
+
+        # Should be 30 minutes = 1800 seconds (±10s tolerance)
+        assert 1790 <= lifetime_seconds <= 1810, f"Expected ~1800s, got {lifetime_seconds}s"
+        assert payload["role"] == "super_admin"
+
+    @pytest.mark.asyncio
+    async def test_manager_role_token_lifetime_30_minutes(self, jwt_service: JWTService, test_user: User):
+        """Test manager token has 30-minute (1800s) lifetime."""
+        token, payload = await jwt_service.create_access_token(
+            user_id=test_user.id,
+            email=test_user.email,
+            role="manager"  # Manager role
+        )
+
+        exp = datetime.fromtimestamp(payload["exp"])
+        iat = datetime.fromtimestamp(payload["iat"])
+        lifetime_seconds = (exp - iat).total_seconds()
+
+        # Should be 30 minutes = 1800 seconds (±10s tolerance)
+        assert 1790 <= lifetime_seconds <= 1810, f"Expected ~1800s, got {lifetime_seconds}s"
+        assert payload["role"] == "manager"
+
 
 class TestRefreshTokenGeneration:
     """Test refresh token generation."""

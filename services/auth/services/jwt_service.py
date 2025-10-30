@@ -134,10 +134,14 @@ class JWTService:
         """
         Generate JWT access token with user claims.
 
+        Implements role-based token lifetimes:
+        - admin/super_admin/manager: 30 minutes (1800 seconds)
+        - user: 60 minutes (3600 seconds)
+
         Args:
             user_id: User UUID
             email: User email
-            role: User role (user, admin, super_admin)
+            role: User role (user, admin, super_admin, manager)
             company_id: Optional company UUID
             permissions: Optional list of permissions
 
@@ -145,6 +149,14 @@ class JWTService:
             Tuple of (access_token, jti)
         """
         jti = str(uuid4())
+
+        # Role-based token lifetime (Task 2.0 requirement)
+        if role in ["admin", "super_admin", "manager"]:
+            # Privileged roles: 30 minutes
+            expires_delta = timedelta(seconds=settings.TOKEN_ACCESS_LIFETIME_ADMIN)
+        else:
+            # Regular users: 60 minutes
+            expires_delta = timedelta(seconds=settings.TOKEN_ACCESS_LIFETIME_USER)
 
         extra_claims = {
             "email": email,
@@ -159,7 +171,7 @@ class JWTService:
         cache_key = f"token:{jti}"
         await redis_client.setex(
             cache_key,
-            int(self.access_token_expire.total_seconds()),
+            int(expires_delta.total_seconds()),
             json.dumps({
                 "user_id": str(user_id),
                 "valid": True,
@@ -170,7 +182,7 @@ class JWTService:
         token, jti = await self._generate_token(
             user_id=user_id,
             token_type="access",
-            expires_delta=self.access_token_expire,
+            expires_delta=expires_delta,
             jti=jti,
             **extra_claims
         )
@@ -258,6 +270,8 @@ class JWTService:
                 token,
                 self.public_key,
                 algorithms=[self.algorithm],
+                audience=settings.JWT_AUDIENCE,
+                issuer=settings.JWT_ISSUER,
                 options={"verify_exp": True}
             )
 

@@ -293,8 +293,35 @@ psql -h localhost -U cortex_user -d cortex_db
 
 For production deployment:
 
+**Before deploying to production:**
+
+1. **Generate production keys:**
+   ```sh
+   ./scripts/generate_keys.sh
+   ```
+2. **Upload keys to AWS Secrets Manager:**
+   ```sh
+   aws secretsmanager create-secret --name cortex/auth/private-key --secret-string file://keys/private.pem
+   aws secretsmanager create-secret --name cortex/auth/public-key --secret-string file://keys/public.pem
+   ```
+3. **Configure IAM permissions:**  
+   Ensure your deployment has `secretsmanager:GetSecretValue` permissions.
+4. **Set environment to production:**  
+   In your deployment, set:  
+   ```
+   ENVIRONMENT=production
+   ```
+5. **Distribute public key to all microservices:**  
+   Use a Kubernetes `ConfigMap` to distribute the key.
+6. **Schedule key rotation:**  
+   Rotate keys approximately every 90 days.
+
+---
+
+**Additional Production Checklist:**
+
 1. Update `.env` with production values
-2. Use production-grade PostgreSQL instance
+2. Use a production-grade PostgreSQL instance
 3. Configure proper CORS origins
 4. Set up SSL/TLS certificates
 5. Use a reverse proxy (Nginx/Traefik)

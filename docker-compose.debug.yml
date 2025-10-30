@@ -1,0 +1,44 @@
+version: '3.8'
+
+# Docker Compose override for debugging
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.debug.yml up auth-service
+
+services:
+  # Auth Service with Debug Configuration
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.debug
+    container_name: cortex-auth-debug
+    environment:
+      - SERVICE_NAME=auth
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECRET_KEY=${SECRET_KEY}
+      - SERVICE_PORT=8001
+      - PYTHONUNBUFFERED=1  # Important for real-time logging
+      - DEBUGPY_ENABLE=1
+    ports:
+      - "8001:8001"  # FastAPI port
+      - "5678:5678"  # Debugger port
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app  # Mount source code for live reload
+    # Override entrypoint for debugging
+    entrypoint: ["/app/docker/entrypoint-debug.sh"]
+    # No CMD needed, handled by entrypoint
+    stdin_open: true  # Keep container interactive
+    tty: true
