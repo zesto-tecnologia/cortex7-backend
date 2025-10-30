@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "cortex-auth-service-collection",
 		"name": "Cortex-7 Auth Service",
-		"description": "Complete API collection for Cortex-7 Authentication Service\n\n## Base URL\nDevelopment: http://localhost:8001\nDocker: http://localhost:8001\n\n## Authentication\nMost endpoints require Bearer token authentication.\nUse the Login endpoint to obtain tokens.\n\n## Token Management\n- Access Token: Short-lived JWT (10 minutes)\n- Refresh Token: Long-lived token (7 days) stored in HTTP-only cookie\n- Use Refresh endpoint to get new tokens before expiration",
+		"description": "Complete API collection for Cortex-7 Authentication Service\n\n## Base URL\nDevelopment: http://localhost:8001\nDocker: http://localhost:8001\n\n## Authentication\nMost endpoints require Bearer token authentication.\nUse the Login endpoint to obtain tokens.\n\n## Token Management\n- Access Token: Short-lived JWT (typically 10-15 minutes)\n- Refresh Token: Long-lived token (7 days) stored in HTTP-only cookie\n- Token rotation on refresh for enhanced security\n- Token reuse detection to prevent replay attacks\n\n## Security Features\n- Invite-code based registration system\n- Strong password requirements (uppercase, lowercase, digit, special character)\n- Role-based access control (user, admin, super_admin)\n- Comprehensive audit logging for admin actions\n- Redis-based session management\n- Supabase integration for user authentication backend",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -87,14 +87,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"invite_code\": \"your-invite-code-here\",\n  \"email\": \"user@example.com\",\n  \"name\": \"Test User\",\n  \"password\": \"SecurePass123\"\n}"
+							"raw": "{\n  \"invite_code\": \"your-invite-code-here\",\n  \"email\": \"user@example.com\",\n  \"name\": \"Test User\",\n  \"password\": \"SecurePass123!\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/v1/auth/register",
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "auth", "register"]
 						},
-						"description": "Register a new user account with invite code.\n\n**Requirements:**\n- **invite_code**: Valid invite code (required)\n- **email**: Must be unique and valid\n- **name**: 1-255 characters\n- **password**: Minimum 8 characters with at least:\n  - 1 uppercase letter\n  - 1 lowercase letter\n  - 1 digit\n\n**Response:**\n- 201: User created successfully\n- 403: Invalid, used, expired, or revoked invite code\n- 409: Email already exists\n- 400: Invalid input"
+						"description": "Register a new user account with invite code.\n\n**Requirements:**\n- **invite_code**: Valid invite code (required, max 64 chars)\n- **email**: Must be unique and valid\n- **name**: 1-255 characters\n- **password**: Minimum 8 characters with at least:\n  - 1 uppercase letter\n  - 1 lowercase letter\n  - 1 digit\n  - 1 special character (!@#$%^&* etc.)\n\n**Response:**\n- 201: User created successfully with user_id, email, and confirmation message\n- 403: Invalid, used, expired, or revoked invite code\n- 409: Email already exists\n- 400: Invalid input or password doesn't meet requirements"
 					},
 					"response": []
 				},
@@ -131,7 +131,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123\"\n}"
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/v1/auth/login",
@@ -246,7 +246,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"token\": \"reset-token-from-email\",\n  \"new_password\": \"NewSecurePass123\"\n}"
+							"raw": "{\n  \"token\": \"reset-token-from-email\",\n  \"new_password\": \"NewSecurePass123!\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/v1/auth/reset-password",
@@ -351,7 +351,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"current_password\": \"SecurePass123\",\n  \"new_password\": \"NewSecurePass123\"\n}"
+							"raw": "{\n  \"current_password\": \"SecurePass123!\",\n  \"new_password\": \"NewSecurePass123!\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/v1/users/me/change-password",
@@ -430,7 +430,7 @@
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "admin", "invites"]
 						},
-						"description": "Generate a new invite code for user registration.\n\n**Requires:** Admin role (authentication required)\n\n**Parameters:**\n- expires_in_days: Number of days until expiration (1-365, default: 7)\n\n**Returns:**\n- Cryptographically secure invite code (32 bytes)\n- Creation and expiration timestamps\n- Creator ID\n- Status: pending/used/expired/revoked\n\n**Response Codes:**\n- 201: Invite code created successfully\n- 401: Unauthorized\n- 500: Creation failed"
+						"description": "Generate a new invite code for user registration.\n\n**Requires:** Admin role (authentication required)\n\n**Parameters:**\n- expires_in_days: Number of days until expiration (1-365, default: 7)\n\n**Returns:**\n- Cryptographically secure invite code (32 bytes)\n- Creation and expiration timestamps\n- Creator ID\n- Status: pending/used/expired/revoked\n\n**Features:**\n- Automatic audit logging of invite creation\n- Tracks creator, timestamp, and expiration\n\n**Response Codes:**\n- 201: Invite code created successfully\n- 401: Unauthorized\n- 500: Creation failed"
 					},
 					"response": []
 				},
@@ -487,7 +487,7 @@
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "admin", "invites", "{{invite_code}}"]
 						},
-						"description": "Revoke an invite code to prevent its use.\n\n**Requires:** Admin role\n\n**Parameters:**\n- code: The invite code to revoke (in URL path)\n\n**Response Codes:**\n- 204: Invite code revoked successfully (no content)\n- 404: Invite code not found\n- 401: Unauthorized\n- 500: Revocation failed"
+						"description": "Revoke an invite code to prevent its use.\n\n**Requires:** Admin role\n\n**Parameters:**\n- code: The invite code to revoke (in URL path)\n\n**Features:**\n- Automatic audit logging of revocation\n- Prevents future use of the code\n- Tracks who revoked and when\n\n**Response Codes:**\n- 204: Invite code revoked successfully (no content)\n- 404: Invite code not found\n- 401: Unauthorized\n- 500: Revocation failed"
 					},
 					"response": []
 				},
@@ -557,7 +557,7 @@
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "admin", "users", "{{user_id}}", "roles"]
 						},
-						"description": "Update a user's role.\n\n**Requires:** Admin role\n\n**Parameters:**\n- user_id: UUID of the user to update (in URL path)\n- role: New role value (user, admin, super_admin)\n\n**Valid Roles:**\n- user: Regular user\n- admin: Administrator\n- super_admin: Super administrator\n\n**Response Codes:**\n- 200: Role updated successfully\n- 400: Invalid role\n- 404: User not found\n- 401: Unauthorized\n- 500: Update failed"
+						"description": "Update a user's role.\n\n**Requires:** Admin role\n\n**Parameters:**\n- user_id: UUID of the user to update (in URL path)\n- role: New role value (user, admin, super_admin)\n\n**Valid Roles:**\n- user: Regular user\n- admin: Administrator\n- super_admin: Super administrator\n\n**Features:**\n- Automatic audit logging of role changes\n- Tracks old role, new role, and admin who made the change\n- Validates role values before update\n\n**Response Codes:**\n- 200: Role updated successfully\n- 400: Invalid role\n- 404: User not found\n- 401: Unauthorized\n- 500: Update failed"
 					},
 					"response": []
 				}

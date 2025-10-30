@@ -1,5 +1,12 @@
 """
 API Gateway for the Cortex microservices architecture.
+
+This gateway provides:
+- Request routing to backend microservices
+- JWT authentication middleware with canary deployment
+- CORS configuration
+- Health monitoring
+- Metrics collection for authentication and proxying
 """
 
 import httpx
@@ -9,30 +16,55 @@ from typing import Any, Dict
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
+from prometheus_client import make_asgi_app
 
 from shared.config.settings import settings
 from cortex_auth import require_auth, require_admin, get_current_user
 from cortex_auth.models import User
 
+# Gateway-specific imports
+from .config import settings as gateway_settings
+from .middleware import AuthenticationMiddleware
+from .metrics import auth_metrics
+
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.DEBUG if settings.debug else logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
     title="Cortex API Gateway",
-    description="API Gateway for Corporate Agent System",
+    description="API Gateway with JWT Authentication and Canary Deployment",
     version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
-# Configure CORS
+# Configure CORS with environment-based origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=gateway_settings.cors_origins,
+    allow_credentials=gateway_settings.cors_allow_credentials,
+    allow_methods=gateway_settings.cors_allow_methods,
+    allow_headers=gateway_settings.cors_allow_headers,
+    expose_headers=["Set-Cookie"],
 )
+
+# Add authentication middleware (with canary deployment support)
+if gateway_settings.auth_enabled:
+    app.add_middleware(AuthenticationMiddleware)
+    logger.info(
+        f"Authentication middleware enabled "
+        f"(canary: {gateway_settings.canary_enabled}, "
+        f"percentage: {gateway_settings.canary_auth_percentage}%)"
+    )
+
+# Mount Prometheus metrics endpoint
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
 
 # Service routing configuration
 SERVICE_ROUTES = {
