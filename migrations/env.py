@@ -19,6 +19,21 @@ from shared.config.settings import settings
 # Import all models to ensure they're registered with Base
 from shared.models import *  # noqa: F401, F403
 
+# Import auth service models (separate Base instance)
+try:
+    from services.auth.database import Base as AuthBase
+    from services.auth.models.user import User  # noqa: F401
+    from services.auth.models.refresh_token import RefreshToken  # noqa: F401
+    from services.auth.models.audit_log import AuditLog  # noqa: F401
+    from services.auth.models.role import Role, UserRole  # noqa: F401
+    from services.auth.models.user_company import UserCompany  # noqa: F401
+    from services.auth.models.invite import InviteCode  # noqa: F401
+    from services.auth.models.jwt_key import JWTKey  # noqa: F401
+except ImportError as e:
+    # Auth models not available, continue with shared models only
+    print(f"Warning: Could not import auth models: {e}")
+    AuthBase = None
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -33,6 +48,13 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
+# Combine metadata from both Base instances
+if AuthBase is not None:
+    # Merge tables from auth Base into shared Base metadata
+    for table in AuthBase.metadata.tables.values():
+        if table.name not in Base.metadata.tables:
+            table.to_metadata(Base.metadata)
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
