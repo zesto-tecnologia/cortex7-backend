@@ -92,6 +92,7 @@ class Settings(BaseSettings):
     procurement_service_port: int = Field(default=8005)
     documents_service_port: int = Field(default=8006)
     ai_service_port: int = Field(default=8007)
+    presentation_service_port: int = Field(default=8008)
 
     # Service URLs
     auth_service_url: str = Field(default="http://localhost:8001")
@@ -101,6 +102,7 @@ class Settings(BaseSettings):
     procurement_service_url: str = Field(default="http://localhost:8005")
     documents_service_url: str = Field(default="http://localhost:8006")
     ai_service_url: str = Field(default="http://localhost:8007")
+    presentation_service_url: str = Field(default="http://localhost:8008")
 
     # Sentry
     sentry_dsn: Optional[str] = Field(default=None)

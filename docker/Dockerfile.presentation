@@ -19,8 +19,9 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
 
-# Copy project files
+# Copy project files and shared dependencies
 COPY pyproject.toml README.md ./
+COPY shared/ ./shared/
 
 # Install dependencies using uv (system-wide, no venv needed in Docker)
 # Use unsafe-best-match to allow searching certifi across all indexes (PyTorch and PyPI)

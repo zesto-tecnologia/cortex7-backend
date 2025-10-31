@@ -58,6 +58,7 @@ services:
       - PROCUREMENT_SERVICE_URL=http://cortex-procurement:8005
       - DOCUMENTS_SERVICE_URL=http://cortex-documents:8006
       - AI_SERVICE_URL=http://cortex-ai:8007
+      - PRESENTATION_SERVICE_URL=http://cortex-presentation:8008
     ports:
       - "8000:8000"
     depends_on:

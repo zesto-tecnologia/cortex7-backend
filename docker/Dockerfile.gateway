@@ -13,12 +13,16 @@ RUN apt-get update && apt-get install -y \
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
 
-# Copy project files
+# Copy project files and shared dependencies
 COPY pyproject.toml README.md ./
+COPY shared/ ./shared/
 
 # Install dependencies using uv (system-wide, no venv needed in Docker)
 # Use unsafe-best-match to consider all versions from all indexes (PyTorch + PyPI)
 RUN uv pip install --system --index-strategy unsafe-best-match -e .
+
+# Fix cortex-auth .pth file to point to the correct path
+RUN echo "/app/shared" > /usr/local/lib/python3.11/site-packages/_cortex_auth.pth
 
 # Copy application code
 COPY . .

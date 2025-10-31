@@ -17,8 +17,9 @@ RUN useradd -m -u 1000 -s /bin/bash celeryuser && \
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
 
-# Copy project files
+# Copy project files and shared dependencies
 COPY pyproject.toml README.md ./
+COPY shared/ ./shared/
 
 # Install dependencies using uv (system-wide, no venv needed in Docker)
 # Use unsafe-best-match to consider all versions from all indexes (PyTorch + PyPI)

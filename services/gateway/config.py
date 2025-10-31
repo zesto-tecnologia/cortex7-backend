@@ -65,6 +65,12 @@ class GatewaySettings(BaseSettings):
             "/auth/api/v1/auth/login",
             "/auth/api/v1/auth/register",
             "/auth/api/v1/auth/refresh",
+            "/api/v1/ppt",
+            "/api/export-as-pdf",
+            "/api/v1/webhook",
+            "/api/v1/mock",
+            "/static",
+            "/app_data",
         ],
         description="Path prefixes that bypass authentication"
     )

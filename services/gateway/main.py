@@ -77,6 +77,9 @@ SERVICE_ROUTES = {
     "/ai": settings.ai_service_url,
 }
 
+# Services that need full path preservation (don't strip prefix)
+PRESENTATION_SERVICE_PREFIXES = ["/api/v1/ppt", "/api/export-as-pdf", "/api/v1/webhook", "/api/v1/mock", "/static", "/app_data"]
+
 
 @app.get("/")
 async def root():
@@ -173,23 +176,33 @@ async def admin_service_status(request: Request):
     }
 
 
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 async def gateway_proxy(request: Request, path: str):
     """
     Proxy requests to appropriate microservices.
     """
     logger.info(f"🔍 Gateway received request: {request.method} /{path}")
 
-    # Determine which service to route to
+    # Check if this is a presentation service request (preserve full path)
     service_url = None
-    for route_prefix, url in SERVICE_ROUTES.items():
-        if f"/{path}".startswith(route_prefix):
-            service_url = url
-            # Remove the service prefix from the path
-            service_path = f"/{path}".replace(route_prefix, "", 1)
-            if not service_path:
-                service_path = "/"
+    service_path = None
+
+    for prefix in PRESENTATION_SERVICE_PREFIXES:
+        if f"/{path}".startswith(prefix):
+            service_url = settings.presentation_service_url
+            service_path = f"/{path}"  # Keep full path
             break
+
+    # If not presentation service, check other services
+    if not service_url:
+        for route_prefix, url in SERVICE_ROUTES.items():
+            if f"/{path}".startswith(route_prefix):
+                service_url = url
+                # Remove the service prefix from the path
+                service_path = f"/{path}".replace(route_prefix, "", 1)
+                if not service_path:
+                    service_path = "/"
+                break
 
     if not service_url:
         raise HTTPException(status_code=404, detail="Service not found")
@@ -252,7 +265,7 @@ async def gateway_proxy(request: Request, path: str):
                 }
             )
         else:
-            # For regular endpoints, use JSONResponse
+            # For regular endpoints
             async with httpx.AsyncClient(follow_redirects=True) as client:
                 response = await client.request(
                     method=request.method,
@@ -263,7 +276,20 @@ async def gateway_proxy(request: Request, path: str):
                     timeout=30.0,
                 )
 
-            # Return the response
+            # Return appropriate response based on content type
+            content_type = response.headers.get("content-type", "")
+
+            # For static files (images, SVG, CSS, JS, etc.), return raw content
+            if any(ct in content_type.lower() for ct in ["image/", "text/css", "text/javascript", "application/javascript", "font/", "application/octet-stream"]):
+                from fastapi.responses import Response
+                return Response(
+                    content=response.content,
+                    status_code=response.status_code,
+                    headers=dict(response.headers),
+                    media_type=content_type,
+                )
+
+            # For JSON responses
             return JSONResponse(
                 content=response.json() if response.content else None,
                 status_code=response.status_code,
