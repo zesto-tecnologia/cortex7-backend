@@ -11,19 +11,19 @@ logger = logging.getLogger(__name__)
 PROCUREMENT_SERVICE_URL = "http://procurement-service:8005"
 
 
-class GetOrdensCompraTool(BaseTool):
-    name: str = "Get Ordens Compra"
-    description: str = "Get purchase orders (ordens de compra) for a company. Use this to check purchase orders, their status, and procurement details. Input: empresa_id (required), status (optional)"
+class GetPurchaseOrdersTool(BaseTool):
+    name: str = "Get Purchase Orders"
+    description: str = "Get purchase orders (purchase orders) for a company. Use this to check purchase orders, their status, and procurement details. Input: company_id (required), status (optional)"
     
-    def _run(self, empresa_id: str, status: str = "") -> str:
+    def _run(self, company_id: str, status: str = "") -> str:
         """Execute the tool."""
         try:
-            params = {"empresa_id": empresa_id}
+            params = {"company_id": company_id}
             if status:
                 params["status"] = status
                 
             response = httpx.get(
-                f"{PROCUREMENT_SERVICE_URL}/ordens-compra/",
+                f"{PROCUREMENT_SERVICE_URL}/purchase-orders/",
                 params=params,
                 timeout=10.0
             )
@@ -35,16 +35,16 @@ class GetOrdensCompraTool(BaseTool):
             return f"Error retrieving purchase orders: {str(e)}"
 
 
-class GetAprovacoesPendentesTool(BaseTool):
-    name: str = "Get Aprovacoes Pendentes"
-    description: str = "Get pending approvals for purchase orders. Use this to check what orders need approval and their approval status. Input: empresa_id (required)"
+class GetPendingApprovalsTool(BaseTool):
+    name: str = "Get Pending Approvals"
+    description: str = "Get pending approvals for purchase orders. Use this to check what orders need approval and their approval status. Input: company_id (required)"
     
-    def _run(self, empresa_id: str) -> str:
+    def _run(self, company_id: str) -> str:
         """Execute the tool."""
         try:
             response = httpx.get(
-                f"{PROCUREMENT_SERVICE_URL}/aprovacoes/",
-                params={"empresa_id": empresa_id, "status": "pendente"},
+                f"{PROCUREMENT_SERVICE_URL}/pending-approvals/",
+                params={"company_id": company_id, "status": "pendente"},
                 timeout=10.0
             )
             response.raise_for_status()
@@ -58,7 +58,7 @@ class GetAprovacoesPendentesTool(BaseTool):
 def get_procurement_tools():
     """Get all procurement tools."""
     return [
-        GetOrdensCompraTool(),
-        GetAprovacoesPendentesTool(),
+        GetPurchaseOrdersTool(),
+        GetPendingApprovalsTool(),
     ]
 

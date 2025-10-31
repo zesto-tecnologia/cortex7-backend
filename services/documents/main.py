@@ -3,12 +3,12 @@ Documents microservice main application.
 Handles document management with vector embeddings for semantic search.
 """
 
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
-from shared.database.connection import get_db
-from shared.config.settings import settings
+import os
 import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from shared.config.settings import settings
 
 # Create FastAPI app
 app = FastAPI(
@@ -60,4 +60,4 @@ app.include_router(embeddings.router, prefix="/embeddings", tags=["Embeddings"])
 
 if __name__ == "__main__":
     port = int(settings.documents_service_port)
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("services.documents.main:app", host="0.0.0.0", port=port, reload=True)

@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Copy project files
+COPY pyproject.toml README.md ./
+
+# Install dependencies including dev dependencies (which includes debugpy)
+# Use unsafe-best-match to consider all versions from all indexes (PyTorch + PyPI)
+RUN uv pip install --system --index-strategy unsafe-best-match -e ".[dev]"
+
+# Copy application code
+COPY . .
+
+# Make debug entrypoint executable
+RUN chmod +x /app/docker/entrypoint-debug.sh
+
+# Expose ports
+EXPOSE 8001 5678
+
+# Default entrypoint (can be overridden in docker-compose)
+ENTRYPOINT ["/app/docker/entrypoint-debug.sh"]

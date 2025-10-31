@@ -1,0 +1,309 @@
+# Python Microservices Architecture Rules
+
+## Core Principles
+
+### Service Design
+- **Bounded Contexts**: Each service owns its domain and data
+- **Single Responsibility**: One service, one business capability
+- **Loose Coupling**: Services communicate through well-defined contracts
+- **High Cohesion**: Related functionality stays together
+- **Database per Service**: No shared databases between services
+
+### Communication Patterns
+
+#### gRPC (Internal)
+```python
+# Always use async gRPC
+import grpc.aio
+
+# Service definition pattern
+class ServiceNameServicer(service_pb2_grpc.ServiceNameServicer):
+    async def MethodName(self, request, context):
+        # Implementation
+        pass
+```
+
+#### REST (External)
+```python
+# FastAPI pattern for client-facing APIs
+@router.post("/api/v1/resource", status_code=201)
+async def create_resource(
+    resource: ResourceCreate,
+    service: Service = Depends(get_service)
+) -> ResourceResponse:
+    return await service.create(resource)
+```
+
+#### Events (Async)
+```python
+# Kafka for event streaming
+from aiokafka import AIOKafkaProducer
+
+async def publish_event(topic: str, event: dict):
+    producer = AIOKafkaProducer(
+        bootstrap_servers='kafka:9092'
+    )
+    await producer.start()
+    try:
+        await producer.send(topic, event)
+    finally:
+        await producer.stop()
+```
+
+## Service Structure
+
+### Standard Layout
+```
+service-name/
+├── src/
+│   ├── api/              # REST endpoints
+│   │   ├── __init__.py
+│   │   ├── routes.py
+│   │   └── dependencies.py
+│   ├── grpc/             # gRPC services
+│   │   ├── __init__.py
+│   │   ├── server.py
+│   │   └── clients.py
+│   ├── services/         # Business logic
+│   │   ├── __init__.py
+│   │   └── service.py
+│   ├── models/           # Database models
+│   │   ├── __init__.py
+│   │   └── models.py
+│   ├── schemas/          # Pydantic models
+│   │   ├── __init__.py
+│   │   ├── requests.py
+│   │   └── responses.py
+│   ├── repositories/     # Data access
+│   │   ├── __init__.py
+│   │   └── repository.py
+│   ├── core/            # Configuration
+│   │   ├── __init__.py
+│   │   ├── config.py
+│   │   ├── security.py
+│   │   └── database.py
+│   └── main.py          # Application entry
+├── tests/
+├── proto/
+├── migrations/
+├── docker/
+├── k8s/
+└── pyproject.toml
+```
+
+## Design Patterns
+
+### Repository Pattern
+```python
+class UserRepository:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def get(self, user_id: UUID) -> User:
+        result = await self.db.execute(
+            select(User).where(User.id == user_id)
+        )
+        return result.scalar_one_or_none()
+```
+
+### Service Layer
+```python
+class UserService:
+    def __init__(self, repository: UserRepository):
+        self.repository = repository
+
+    async def create_user(self, data: UserCreate) -> User:
+        # Business logic
+        user = User(**data.dict())
+        return await self.repository.create(user)
+```
+
+### Dependency Injection
+```python
+# FastAPI dependency injection
+async def get_service(
+    db: AsyncSession = Depends(get_db),
+    cache: Redis = Depends(get_cache)
+) -> ServiceClass:
+    repository = Repository(db)
+    return ServiceClass(repository, cache)
+```
+
+## Data Management
+
+### Database Strategy
+- PostgreSQL for transactional data
+- Redis for caching and sessions
+- Service-specific databases
+- No cross-service database access
+
+### Migration Pattern
+```python
+# Alembic migrations
+alembic revision --autogenerate -m "description"
+alembic upgrade head
+```
+
+## Resilience Patterns
+
+### Circuit Breaker
+```python
+from circuitbreaker import circuit
+
+@circuit(failure_threshold=5, recovery_timeout=30)
+async def call_external_service(data: dict):
+    # Implementation
+    pass
+```
+
+### Retry Logic
+```python
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10)
+)
+async def resilient_call():
+    # Implementation
+    pass
+```
+
+### Timeout Management
+```python
+import asyncio
+
+async def with_timeout(coro, timeout=30):
+    try:
+        return await asyncio.wait_for(coro, timeout)
+    except asyncio.TimeoutError:
+        raise ServiceTimeoutError()
+```
+
+## Security Rules
+
+### Authentication
+- JWT tokens for service-to-service auth
+- API keys for external clients
+- OAuth2 for user authentication
+
+### Authorization
+```python
+# Role-based access control
+from fastapi import Security
+from src.core.security import check_permissions
+
+@router.get("/admin/users")
+async def get_users(
+    current_user: User = Security(get_current_user, scopes=["admin"])
+):
+    # Admin only endpoint
+    pass
+```
+
+## Observability
+
+### Logging
+```python
+import structlog
+
+logger = structlog.get_logger()
+
+# Structured logging with context
+logger.info(
+    "request_processed",
+    service="user-service",
+    method="POST",
+    path="/users",
+    status=201,
+    duration_ms=45
+)
+```
+
+### Metrics
+```python
+from prometheus_client import Counter, Histogram
+
+request_count = Counter(
+    'requests_total',
+    'Total requests',
+    ['service', 'method', 'endpoint']
+)
+
+request_duration = Histogram(
+    'request_duration_seconds',
+    'Request duration'
+)
+```
+
+### Tracing
+```python
+from opentelemetry import trace
+
+tracer = trace.get_tracer(__name__)
+
+async def process_request():
+    with tracer.start_as_current_span("process_request"):
+        # Implementation
+        pass
+```
+
+## Anti-Patterns to Avoid
+
+### ❌ DON'T
+- Share databases between services
+- Make synchronous calls in async functions
+- Use blocking I/O operations
+- Create distributed monoliths
+- Ignore error handling
+- Skip circuit breakers for external calls
+- Use hardcoded configuration
+
+### ✅ DO
+- Keep services independent
+- Use async/await throughout
+- Implement proper error propagation
+- Design for failure
+- Add comprehensive logging
+- Use environment configuration
+- Version your APIs
+
+## Deployment Architecture
+
+### Container Strategy
+- Multi-stage Docker builds
+- Non-root users
+- Health check endpoints
+- Graceful shutdown
+
+### Kubernetes Patterns
+- One service per deployment
+- Horizontal pod autoscaling
+- Resource limits and requests
+- Liveness and readiness probes
+- ConfigMaps for configuration
+- Secrets for sensitive data
+
+## Performance Guidelines
+
+### Connection Pooling
+```python
+# Database connection pool
+engine = create_async_engine(
+    DATABASE_URL,
+    pool_size=20,
+    max_overflow=0,
+    pool_pre_ping=True,
+)
+```
+
+### Caching Strategy
+- Redis for session data
+- In-memory caching for hot data
+- Cache invalidation patterns
+- TTL management
+
+### Async Optimization
+- Concurrent operations where possible
+- Batch processing for bulk operations
+- Stream processing for large datasets

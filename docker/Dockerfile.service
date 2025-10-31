@@ -6,17 +6,20 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN pip install poetry
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
 
-# Copy poetry files
-COPY pyproject.toml poetry.lock* ./
+# Copy project files and shared dependencies
+COPY pyproject.toml README.md ./
+COPY shared/ ./shared/
 
-# Install dependencies
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+# Install dependencies using uv (system-wide, no venv needed in Docker)
+# Use unsafe-best-match to consider all versions from all indexes (PyTorch + PyPI)
+RUN uv pip install --system --index-strategy unsafe-best-match -e .
 
 # Copy application code
 COPY . .

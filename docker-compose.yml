@@ -4,18 +4,18 @@ services:
     image: ankane/pgvector:v0.5.1
     container_name: cortex-postgres
     environment:
-      POSTGRES_USER: cortex_user
-      POSTGRES_PASSWORD: cortex_password
-      POSTGRES_DB: cortex_db
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./migrations/versions/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+      # Removed SQL init script - now using Alembic migrations
     networks:
       - cortex-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cortex_user"]
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,14 +41,24 @@ services:
       dockerfile: ./docker/Dockerfile.gateway
     container_name: cortex-gateway
     environment:
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=cortex_db
-      - DATABASE_USER=cortex_user
-      - DATABASE_PASSWORD=cortex_password
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - SECRET_KEY=your-secret-key-here
+      - SECRET_KEY=${SECRET_KEY}
+      - AUTH_SERVICE_URL=http://cortex-auth:8001
+      - FINANCIAL_SERVICE_URL=http://cortex-financial:8002
+      - HR_SERVICE_URL=http://cortex-hr:8003
+      - LEGAL_SERVICE_URL=http://cortex-legal:8004
+      - PROCUREMENT_SERVICE_URL=http://cortex-procurement:8005
+      - DOCUMENTS_SERVICE_URL=http://cortex-documents:8006
+      - AI_SERVICE_URL=http://cortex-ai:8007
+      - PRESENTATION_SERVICE_URL=http://cortex-presentation:8008
     ports:
       - "8000:8000"
     depends_on:
@@ -69,14 +79,16 @@ services:
     container_name: cortex-auth
     environment:
       - SERVICE_NAME=auth
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=cortex_db
-      - DATABASE_USER=cortex_user
-      - DATABASE_PASSWORD=cortex_password
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - SECRET_KEY=your-secret-key-here
+      - SECRET_KEY=${SECRET_KEY}
       - SERVICE_PORT=8001
     ports:
       - "8001:8001"
@@ -98,11 +110,13 @@ services:
     container_name: cortex-financial
     environment:
       - SERVICE_NAME=financial
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=cortex_db
-      - DATABASE_USER=cortex_user
-      - DATABASE_PASSWORD=cortex_password
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SERVICE_PORT=8002
@@ -126,11 +140,13 @@ services:
     container_name: cortex-hr
     environment:
       - SERVICE_NAME=hr
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=cortex_db
-      - DATABASE_USER=cortex_user
-      - DATABASE_PASSWORD=cortex_password
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SERVICE_PORT=8003
@@ -154,11 +170,13 @@ services:
     container_name: cortex-legal
     environment:
       - SERVICE_NAME=legal
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=cortex_db
-      - DATABASE_USER=cortex_user
-      - DATABASE_PASSWORD=cortex_password
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SERVICE_PORT=8004
@@ -182,11 +200,13 @@ services:
     container_name: cortex-procurement
     environment:
       - SERVICE_NAME=procurement
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=cortex_db
-      - DATABASE_USER=cortex_user
-      - DATABASE_PASSWORD=cortex_password
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SERVICE_PORT=8005
@@ -210,11 +230,13 @@ services:
     container_name: cortex-documents
     environment:
       - SERVICE_NAME=documents
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=cortex_db
-      - DATABASE_USER=cortex_user
-      - DATABASE_PASSWORD=cortex_password
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SERVICE_PORT=8006
@@ -239,11 +261,13 @@ services:
     container_name: cortex-ai
     environment:
       - SERVICE_NAME=ai
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=cortex_db
-      - DATABASE_USER=cortex_user
-      - DATABASE_PASSWORD=cortex_password
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SERVICE_PORT=8007
@@ -260,20 +284,69 @@ services:
     volumes:
       - ./:/app
 
-  # Celery Worker
+  # Presentation Service
+  presentation-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.presentation
+    container_name: cortex-presentation
+    environment:
+      - SERVICE_NAME=presentation
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVICE_PORT=8008
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      # - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      # - GOOGLE_MODEL=${GOOGLE_MODEL}
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - ANTHROPIC_MODEL=${ANTHROPIC_MODEL}
+      # - OLLAMA_URL=${OLLAMA_URL}
+      # - OLLAMA_MODEL=${OLLAMA_MODEL}
+      # - PEXELS_API_KEY=${PEXELS_API_KEY}
+      - IMAGE_PROVIDER=${IMAGE_PROVIDER}
+      - LLM=${LLM}
+      - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
+      - USER_CONFIG_PATH=${USER_CONFIG_PATH}
+      - APP_DATA_DIRECTORY=/app_data
+      - TEMP_DIRECTORY=/tmp/presenton
+    ports:
+      - "8008:8008"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    volumes:
+      - ./:/app
+      - presentation_data:/app_data
+
   celery-worker:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.celery
     container_name: cortex-celery-worker
     environment:
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=cortex_db
-      - DATABASE_USER=cortex_user
-      - DATABASE_PASSWORD=cortex_password
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     depends_on:
       postgres:
@@ -284,7 +357,7 @@ services:
       - cortex-network
     volumes:
       - ./:/app
-    command: celery -A shared.celery_app worker --loglevel=info
+    command: python -m celery -A shared.celery_app worker --loglevel=info
 
   # Celery Beat (scheduler)
   celery-beat:
@@ -293,13 +366,17 @@ services:
       dockerfile: ./docker/Dockerfile.celery
     container_name: cortex-celery-beat
     environment:
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=cortex_db
-      - DATABASE_USER=cortex_user
-      - DATABASE_PASSWORD=cortex_password
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
     depends_on:
       postgres:
         condition: service_healthy
@@ -309,7 +386,7 @@ services:
       - cortex-network
     volumes:
       - ./:/app
-    command: celery -A shared.celery_app beat --loglevel=info
+    command: python -m celery -A shared.celery_app beat --loglevel=info
 
 networks:
   cortex-network:
@@ -317,3 +394,4 @@ networks:
 
 volumes:
   postgres_data:
+  presentation_data:

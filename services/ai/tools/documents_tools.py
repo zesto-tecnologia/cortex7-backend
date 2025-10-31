@@ -13,18 +13,18 @@ DOCUMENTS_SERVICE_URL = "http://documents-service:8006"
 
 class SearchDocumentsTool(BaseTool):
     name: str = "Search Documents"
-    description: str = "Search for documents using semantic search. Use this to find relevant documents, contracts, reports, or any company documentation. Input: empresa_id (required), query (required), departamento (optional)"
+    description: str = "Search for documents using semantic search. Use this to find relevant documents, contracts, reports, or any company documentation. Input: company_id (required), query (required), department (optional)"
     
-    def _run(self, empresa_id: str, query: str, departamento: str = "") -> str:
+    def _run(self, company_id: str, query: str, department: str = "") -> str:
         """Execute the tool."""
         try:
             params = {
-                "empresa_id": empresa_id,
+                "company_id": company_id,
                 "query": query,
                 "limit": 10
             }
-            if departamento:
-                params["departamento"] = departamento
+            if department:
+                params["department"] = department
                 
             response = httpx.get(
                 f"{DOCUMENTS_SERVICE_URL}/search/",
@@ -32,8 +32,8 @@ class SearchDocumentsTool(BaseTool):
                 timeout=15.0
             )
             response.raise_for_status()
-            data = response.json()
-            return f"Successfully found documents matching '{query}'. Data: {data}"
+            date = response.json()
+            return f"Successfully found documents matching '{query}'. Data: {date}"
         except Exception as e:
             logger.error(f"Error calling documents service: {e}")
             return f"Error searching documents: {str(e)}"
@@ -41,16 +41,16 @@ class SearchDocumentsTool(BaseTool):
 
 class GetDocumentsTool(BaseTool):
     name: str = "Get Documents"
-    description: str = "List documents for a company. Use this to browse available documents by type or department. Input: empresa_id (required), tipo (optional), departamento (optional)"
+    description: str = "List documents for a company. Use this to browse available documents by type or department. Input: company_id (required), type (optional), department (optional)"
     
-    def _run(self, empresa_id: str, tipo: str = "", departamento: str = "") -> str:
+    def _run(self, company_id: str, document_type: str = "", department: str = "") -> str:
         """Execute the tool."""
         try:
-            params = {"empresa_id": empresa_id, "limit": 50}
-            if tipo:
-                params["tipo"] = tipo
-            if departamento:
-                params["departamento"] = departamento
+            params = {"company_id": company_id, "limit": 50}
+            if document_type:
+                params["document_type"] = document_type
+            if department:
+                params["department"] = department
                 
             response = httpx.get(
                 f"{DOCUMENTS_SERVICE_URL}/",
@@ -58,8 +58,8 @@ class GetDocumentsTool(BaseTool):
                 timeout=10.0
             )
             response.raise_for_status()
-            data = response.json()
-            return f"Successfully retrieved {len(data)} documents. Data: {data}"
+            date = response.json()
+            return f"Successfully retrieved {len(date)} documents. Data: {date}"
         except Exception as e:
             logger.error(f"Error calling documents service: {e}")
             return f"Error retrieving documents: {str(e)}"

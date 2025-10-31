@@ -3,12 +3,11 @@ HR microservice main application.
 Handles employee management, contracts, and HR operations.
 """
 
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
-from shared.database.connection import get_db
-from shared.config.settings import settings
 import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from shared.config.settings import settings
 
 # Create FastAPI app
 app = FastAPI(
@@ -50,15 +49,15 @@ async def health_check():
 
 
 # Import routers
-from services.hr.routers import funcionarios, contratos, ferias, beneficios
+from services.hr.routers import employees, contracts, vacations, benefits
 
 # Include routers
-app.include_router(funcionarios.router, prefix="/funcionarios", tags=["Funcionários"])
-app.include_router(contratos.router, prefix="/contratos", tags=["Contratos de Trabalho"])
-app.include_router(ferias.router, prefix="/ferias", tags=["Férias"])
-app.include_router(beneficios.router, prefix="/beneficios", tags=["Benefícios"])
+app.include_router(employees.router, prefix="/employees", tags=["Employees"])
+app.include_router(contracts.router, prefix="/contracts", tags=["Employment Contracts"])
+app.include_router(vacations.router, prefix="/vacations", tags=["Vacations"])
+app.include_router(benefits.router, prefix="/benefits", tags=["Benefits"])
 
 
 if __name__ == "__main__":
     port = int(settings.hr_service_port)
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("services.hr.main:app", host="0.0.0.0", port=port, reload=True)

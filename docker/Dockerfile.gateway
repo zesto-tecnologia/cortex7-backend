@@ -6,20 +6,33 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN pip install poetry
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
 
-# Copy poetry files
-COPY pyproject.toml poetry.lock* ./
+# Copy project files and shared dependencies
+COPY pyproject.toml README.md ./
+COPY shared/ ./shared/
 
-# Install dependencies
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+# Install dependencies using uv (system-wide, no venv needed in Docker)
+# Use unsafe-best-match to consider all versions from all indexes (PyTorch + PyPI)
+RUN uv pip install --system --index-strategy unsafe-best-match -e .
+
+# Fix cortex-auth .pth file to point to the correct path
+RUN echo "/app/shared" > /usr/local/lib/python3.11/site-packages/_cortex_auth.pth
 
 # Copy application code
 COPY . .
+
+# Copy entrypoint script
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Set entrypoint to run migrations
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Run the gateway service
 CMD ["uvicorn", "services.gateway.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

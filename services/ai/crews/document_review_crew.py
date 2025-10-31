@@ -8,13 +8,13 @@ from ..agents.general.analyst_agent import create_analyst_agent
 from ..agents.general.writer_agent import create_writer_agent
 
 
-def create_document_review_crew(llm, empresa_id: str, query: str, review_type: str = "general"):
+def create_document_review_crew(llm, company_id: str, query: str, review_type: str = "general"):
     """
     Create a crew for document review and analysis.
     
     Args:
         llm: Language model to use
-        empresa_id: Company UUID
+        company_id: Company UUID
         query: Search query or topic for document review
         review_type: Type of review ('general', 'compliance', 'summary')
     """
@@ -24,7 +24,7 @@ def create_document_review_crew(llm, empresa_id: str, query: str, review_type: s
     
     # Search and retrieve documents
     search_task = Task(
-        description=f"Search and retrieve relevant documents for company {empresa_id} related to: '{query}'. Gather all pertinent information.",
+        description=f"Search and retrieve relevant documents for company {company_id} related to: '{query}'. Gather all pertinent information.",
         agent=documents_agent,
         expected_output="List of relevant documents with their content and metadata"
     )

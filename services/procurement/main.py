@@ -3,10 +3,11 @@ Procurement microservice main application.
 Handles purchase orders, supplier management, and procurement workflows.
 """
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from shared.config.settings import settings
-import uvicorn
 
 # Create FastAPI app
 app = FastAPI(
@@ -48,14 +49,14 @@ async def health_check():
 
 
 # Import routers
-from services.procurement.routers import ordens_compra, aprovacoes, analytics
+from services.procurement.routers import purchase_orders, approvals, analytics
 
 # Include routers
-app.include_router(ordens_compra.router, prefix="/ordens-compra", tags=["Ordens de Compra"])
-app.include_router(aprovacoes.router, prefix="/aprovacoes", tags=["Aprovações"])
+app.include_router(purchase_orders.router, prefix="/purchase-orders", tags=["Purchase Orders"])
+app.include_router(approvals.router, prefix="/approvals", tags=["Approvals"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 
 
 if __name__ == "__main__":
     port = int(settings.procurement_service_port)
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("services.procurement.main:app", host="0.0.0.0", port=port, reload=True)

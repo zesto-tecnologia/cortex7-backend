@@ -9,46 +9,46 @@ from shared.database.connection import Base
 from shared.models.base import BaseModelMixin, UUIDMixin
 
 
-class Workflow(Base, BaseModelMixin):
-    """Workflow model."""
+class CorporateWorkflow(Base, BaseModelMixin):
+    """Corporate Workflow model."""
 
-    __tablename__ = "workflows"
+    __tablename__ = "corporate_workflows"
 
-    empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False)
-    tipo = Column(String(50), nullable=False, index=True)  # contratacao, compra, aprovacao_contrato
-    nome = Column(String(255), nullable=False)
-    fases = Column(JSON, nullable=False)  # [{nome, ordem, responsavel, acoes}]
-    ativo = Column(Boolean, default=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    workflow_type = Column(String(50), nullable=False, index=True)  # hiring, purchase, contract_approval
+    name = Column(String(255), nullable=False)
+    phases = Column(JSON, nullable=False)  # [{name, order, responsible, actions}]
+    active = Column(Boolean, default=True)
 
     # Relationships
-    empresa = relationship("Empresa", back_populates="workflows")
-    tarefas = relationship("Tarefa", back_populates="workflow")
+    company = relationship("Company", back_populates="workflows")
+    tasks = relationship("Task", back_populates="workflow")
 
 
-class Tarefa(Base, BaseModelMixin):
-    """Tarefa model."""
-    __tablename__ = "tarefas"
+class Task(Base, BaseModelMixin):
+    """Task model."""
+    __tablename__ = "tasks"
 
-    empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False)
-    workflow_id = Column(UUID(as_uuid=True), ForeignKey("workflows.id", ondelete="SET NULL"))
-    entidade_tipo = Column(String(50))  # ordem_compra, contrato, funcionario
-    entidade_id = Column(UUID(as_uuid=True), nullable=False)
-    titulo = Column(String(255), nullable=False)
-    descricao = Column(String)
-    responsavel_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), index=True)
-    departamento = Column(String(50), nullable=False)
-    status = Column(String(20), default="pendente")  # pendente, em_andamento, bloqueada, concluida, cancelada
-    prioridade = Column(Integer, default=5)  # 1=crítico até 10=baixo
-    prazo = Column(Date)
-    prazo_legal = Column(Boolean, default=False)  # True se tem implicação legal
-    dias_para_vencimento = Column(Integer)  # Calculado automaticamente
-    dependencias = Column(ARRAY(UUID(as_uuid=True)))  # IDs de outras tarefas que bloqueiam esta
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    workflow_id = Column(UUID(as_uuid=True), ForeignKey("corporate_workflows.id", ondelete="SET NULL"))
+    entity_type = Column(String(50))  # purchase_order, contract, employee
+    entity_id = Column(UUID(as_uuid=True), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(String)
+    assignee_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id", ondelete="SET NULL"), index=True)
+    department = Column(String(50), nullable=False)
+    status = Column(String(20), default="pending")  # pending, in_progress, blocked, completed, canceled
+    priority = Column(Integer, default=5)  # 1=critical to 10=low
+    due_date = Column(Date)
+    legal_deadline = Column(Boolean, default=False)  # True if has legal implication
+    days_until_due = Column(Integer)  # Calculated automatically
+    dependencies = Column(ARRAY(UUID(as_uuid=True)))  # IDs of other blocking tasks
     meta_data = Column(JSON)
-    concluida_em = Column(Date)
+    completed_at = Column(Date)
 
     # Relationships
-    empresa = relationship("Empresa", back_populates="tarefas")
-    workflow = relationship("Workflow", back_populates="tarefas")
-    responsavel = relationship("Usuario", back_populates="tarefas")
+    company = relationship("Company", back_populates="tasks")
+    workflow = relationship("CorporateWorkflow", back_populates="tasks")
+    assignee = relationship("UserProfile", back_populates="tasks")
 
     # Indexes are defined in the database using CREATE INDEX statements

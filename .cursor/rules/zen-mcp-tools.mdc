@@ -1,0 +1,450 @@
+---
+alwaysApply: true
+---
+
+# Zen MCP Tools Usage Guide - Python Microservices
+
+## Overview
+
+Zen MCP provides access to advanced AI models (Gemini 2.5 Pro, O3) for complex microservices analysis, debugging, and architecture review.
+
+**When to use Zen MCP:**
+- Service architecture design before implementation
+- gRPC contract validation and review
+- Cross-service dependency analysis
+- Database schema and migration review
+- Performance optimization in async Python
+- Security review for authentication/authorization
+
+## Available Zen MCP Tools
+
+### 1. `zen_debug`
+
+**Purpose:** Debug complex service issues and trace execution flow
+
+**When to use:**
+- Before implementing complex multi-service features
+- When debugging async/await issues
+- When tracing gRPC request flow through services
+- When analyzing database transaction boundaries
+
+**Usage:**
+```python
+# Use zen_debug to analyze complex service flow
+# Example: Understanding JWT authentication across services
+zen_debug({
+  context: "Analyze JWT token validation flow in auth-service",
+  code: jwt_validation_code,
+  model: "gemini-2.5-pro"
+})
+```
+
+**Best practices:**
+- Include service boundaries in context
+- Provide proto definitions when relevant
+- Include SQLAlchemy models for database issues
+- Document findings in service documentation
+
+### 2. `zen_analyze`
+
+**Purpose:** Perform deep architectural analysis for microservices
+
+**When to use:**
+- Before implementing new services
+- When designing service boundaries
+- When evaluating database-per-service patterns
+- When planning event-driven architecture
+
+**Usage:**
+```python
+# Use zen_analyze for service design decisions
+# Example: Analyzing cache strategy for user-service
+zen_analyze({
+  context: "Evaluate Redis vs in-memory cache for user-service with 10K RPS",
+  code: cache_manager_code,
+  model: "gemini-2.5-pro"
+})
+```
+
+**Best practices:**
+- Include bounded context definitions
+- Request specific analysis for gRPC vs REST
+- Document architectural decisions in ADRs
+- Consider service mesh implications
+
+### 3. `zen_tracer`
+
+**Purpose:** Trace code execution paths across services
+
+**When to use:**
+- Understanding cross-service request flows
+- Tracing async task execution with Celery
+- Analyzing gRPC streaming patterns
+- Understanding database connection pooling
+
+**Usage:**
+```python
+# Use zen_tracer to understand service communication
+# Example: Tracing order processing across services
+zen_tracer({
+  context: "Trace order flow: API Gateway → Order Service → Payment Service → Notification Service",
+  entryPoint: "POST /api/v1/orders",
+  model: "gemini-2.5-pro"
+})
+```
+
+**Best practices:**
+- Map service boundaries clearly
+- Include message queue flows (Kafka/RabbitMQ)
+- Document critical paths in service README
+- Use findings to optimize service mesh configuration
+
+### 4. `zen_codereview`
+
+**Purpose:** Comprehensive code review with multiple AI models
+
+**When to use:**
+- **REQUIRED** after implementing new services
+- Before deploying to production
+- After major refactoring of service logic
+- When implementing security-sensitive features
+
+**Usage:**
+```python
+# MANDATORY for service implementation
+zen_codereview({
+  files: [
+    "user-service/src/api/routes.py",
+    "user-service/src/services/user_service.py",
+    "user-service/src/repositories/user_repository.py",
+    "user-service/proto/user.proto"
+  ],
+  models: ["gemini-2.5-pro", "o3"],
+  focus: ["security", "async-patterns", "grpc-contracts", "database-queries"]
+})
+```
+
+**Best practices:**
+- Review entire service stack (API → Service → Repository → Proto)
+- **MUST** show ALL recommendations
+- Address critical issues before deployment
+- Document security findings in security audit log
+
+## Model Selection for Python Microservices
+
+### Gemini 2.5 Pro
+**Use for:**
+- Service architecture analysis
+- Async/await pattern review
+- gRPC contract validation
+- Database schema design
+
+**Strengths:**
+- Fast response time
+- Good at Python async patterns
+- Strong microservices understanding
+
+### O3
+**Use for:**
+- Security vulnerability analysis
+- Performance optimization
+- Production readiness checks
+- Complex async flow analysis
+
+**Strengths:**
+- Deep security analysis
+- Catches subtle async bugs
+- Strong optimization recommendations
+
+## When Zen MCP is REQUIRED
+
+### Before Starting New Services
+
+**Definition of complex service:**
+- Involves gRPC communication
+- Requires database schema
+- Implements authentication/authorization
+- Integrates with 3+ other services
+
+**Required actions:**
+```python
+# 1. Analyze service architecture
+zen_analyze({
+  context: """
+    Plan user-service implementation:
+    - FastAPI REST endpoints
+    - gRPC service for internal communication
+    - PostgreSQL with SQLAlchemy 2.0
+    - Redis caching
+    - JWT authentication
+
+    Analyze:
+    - Optimal service structure
+    - Database schema design
+    - gRPC vs REST boundaries
+    - Caching strategy
+  """,
+  model: "gemini-2.5-pro"
+})
+
+# 2. Trace service dependencies
+zen_tracer({
+  context: "Trace auth flow: API Gateway → Auth Service → User Service → Database",
+  model: "gemini-2.5-pro"
+})
+```
+
+### After Completing Services
+
+**MANDATORY:**
+```python
+# Final code review with both models
+zen_codereview({
+  files: [
+    "user-service/src/api/routes.py",
+    "user-service/src/services/user_service.py",
+    "user-service/src/grpc/user_servicer.py",
+    "user-service/src/models/user.py",
+    "user-service/tests/test_user_service.py"
+  ],
+  models: ["gemini-2.5-pro", "o3"],
+  focus: [
+    "security",           # JWT handling, RBAC
+    "async-patterns",     # Proper async/await usage
+    "grpc-contracts",     # Proto compliance
+    "database",          # N+1 queries, connection pooling
+    "testing"            # Test coverage and mocking
+  ]
+})
+```
+
+## Integration with Python Development Workflow
+
+### Service Development Workflow with Zen MCP
+
+```
+1. Read PRD/Tech Spec
+2. If new service → zen_analyze BEFORE coding
+3. Define proto files
+4. Create database models
+5. Implement service logic
+6. Add REST endpoints
+7. Add gRPC servicer
+8. Write tests (pytest)
+9. Run quality checks (mypy, ruff, black)
+10. If complex → zen_codereview AFTER coding
+11. Address review findings
+12. Deploy to K8s
+```
+
+### Example: Implementing User Service
+
+```python
+# Step 1: Before implementation
+zen_analyze({
+  context: """
+    Plan user microservice:
+    - FastAPI for REST API (/api/v1/users)
+    - gRPC for internal communication
+    - PostgreSQL with user, profile, preferences tables
+    - Redis for session cache
+    - JWT authentication with refresh tokens
+    - Rate limiting with slowapi
+
+    Analyze:
+    - Service boundary definition
+    - Database schema optimization
+    - Caching strategy for 10K RPS
+    - Security considerations
+  """,
+  model: "gemini-2.5-pro"
+})
+
+# Step 2: Implement based on analysis
+# ... implementation code ...
+
+# Step 3: After implementation
+zen_codereview({
+  files: [
+    "user-service/src/api/routes.py",
+    "user-service/src/services/user_service.py",
+    "user-service/src/grpc/user_servicer.py",
+    "user-service/src/models/user.py",
+    "user-service/src/repositories/user_repository.py",
+    "user-service/tests/test_user_service.py"
+  ],
+  models: ["gemini-2.5-pro", "o3"],
+  focus: [
+    "security",           # Check JWT implementation
+    "async-patterns",     # Verify async/await usage
+    "database",          # Check for N+1 queries
+    "grpc-contracts",     # Validate proto compliance
+    "error-handling",     # Check exception hierarchy
+    "testing"            # Verify test coverage
+  ]
+})
+```
+
+## Reporting Zen MCP Findings
+
+### MUST Include in Service Completion
+
+```markdown
+## Zen MCP Review Results
+
+### Pre-Implementation Analysis (Gemini 2.5 Pro)
+**Findings:**
+- Recommendation 1: Use repository pattern for database access
+- Recommendation 2: Implement circuit breaker for external services
+- Recommendation 3: Add distributed tracing with OpenTelemetry
+
+**Actions Taken:**
+- ✅ Implemented UserRepository with async SQLAlchemy
+- ✅ Added circuit breaker for payment service calls
+- ⏸️ Deferred OpenTelemetry to Phase 2
+
+### Post-Implementation Review (Gemini 2.5 Pro + O3)
+
+**Gemini 2.5 Pro Findings:**
+- ✅ PASS: JWT implementation secure
+- ⚠️ WARNING: Consider adding request timeout tracking
+- ✅ PASS: Database queries optimized
+
+**O3 Findings:**
+- ✅ PASS: Async patterns correctly implemented
+- ⚠️ WARNING: Missing index on frequently queried column
+- 🔴 CRITICAL: SQL injection vulnerability in search endpoint
+
+**Actions Taken:**
+- ✅ Added request timeout tracking with metrics
+- ✅ Added database index on user.email
+- ✅ Fixed SQL injection with parameterized queries
+- ✅ Re-ran pytest - all passing with 85% coverage
+```
+
+## Common Zen MCP Patterns for Python
+
+### Pattern 1: Service Planning
+
+```python
+zen_analyze({
+  context: """
+    Service: {service_name}
+    Bounded Context: {context}
+    Dependencies: {other_services}
+    Database: {database_type}
+
+    Analyze:
+    1. Service boundaries
+    2. API design (REST vs gRPC)
+    3. Database schema
+    4. Caching strategy
+    5. Security requirements
+  """,
+  model: "gemini-2.5-pro"
+})
+```
+
+### Pattern 2: Async Debugging
+
+```python
+zen_debug({
+  context: """
+    Issue: {async_issue_description}
+    Expected: {expected_behavior}
+    Actual: {actual_behavior}
+    Code: {async_function_code}
+
+    Debug:
+    1. Async/await correctness
+    2. Potential deadlocks
+    3. Connection pool exhaustion
+    4. Task cancellation handling
+  """,
+  model: "gemini-2.5-pro"
+})
+```
+
+### Pattern 3: gRPC Flow Tracing
+
+```python
+zen_tracer({
+  context: """
+    Trace: {grpc_flow_description}
+    Entry: {rest_endpoint}
+    Services: {service_chain}
+    Exit: {final_response}
+
+    Analyze:
+    1. Service communication path
+    2. Error propagation
+    3. Timeout handling
+    4. Circuit breaker triggers
+  """,
+  model: "gemini-2.5-pro"
+})
+```
+
+### Pattern 4: Final Review (MANDATORY)
+
+```python
+zen_codereview({
+  files: modified_files,
+  models: ["gemini-2.5-pro", "o3"],
+  focus: ["security", "async-patterns", "database", "grpc", "testing"],
+  context: """
+    Service completed: {service_name}
+    Changes: {changes_summary}
+
+    Review for:
+    1. Security vulnerabilities (SQL injection, JWT)
+    2. Async/await correctness
+    3. Database query optimization
+    4. gRPC contract compliance
+    5. Test coverage adequacy
+  """
+})
+```
+
+## Python-Specific Best Practices
+
+### ✅ DO
+
+- Use Zen MCP for service architecture design
+- Review async/await patterns with Zen
+- Validate gRPC contracts before deployment
+- Check database queries for N+1 problems
+- Review security implementation (JWT, RBAC)
+- Document service boundaries from analysis
+- Use both models for production services
+
+### ❌ DON'T
+
+- Skip Zen review for new services
+- Hide recommendations about security
+- Ignore async pattern warnings
+- Skip database optimization findings
+- Use only one model for critical services
+- Forget to document architectural decisions
+
+## Service Complexity → Zen Usage Matrix
+
+| Service Complexity | Pre-Analysis | Post-Review | Models |
+|-------------------|--------------|-------------|---------|
+| Simple CRUD | Optional | Optional | Gemini 2.5 Pro |
+| Standard Service | Recommended | Required | Gemini 2.5 Pro |
+| Complex Service | **Required** | **Required** | Gemini 2.5 Pro + O3 |
+
+**Complexity Indicators:**
+- **Simple**: Single table, basic CRUD, no external deps
+- **Standard**: Multiple tables, external service calls, caching
+- **Complex**: Multiple services, event streaming, complex auth
+
+## Enforcement
+
+**Violations result in service rejection:**
+- Skipping Zen review for new services
+- Hiding security recommendations
+- Not addressing critical findings
+- Using only one model for complex services
+- Not documenting architectural decisions

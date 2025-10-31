@@ -9,7 +9,7 @@ from uuid import UUID
 
 from shared.config.settings import Settings
 from shared.database.connection import AsyncSessionLocal
-from shared.models.workflow import Workflow
+from shared.models.workflow import CorporateWorkflow as Workflow
 
 # Initialize Celery
 settings = Settings()
@@ -49,7 +49,7 @@ async def update_workflow_status(workflow_id: str, status: str, result: dict = N
 
 
 @celery_app.task(bind=True)
-def execute_general_workflow(self, workflow_id: str, empresa_id: str, task_description: str):
+def execute_general_workflow(self, workflow_id: str, company_id: str, task_description: str):
     """Execute a general task workflow asynchronously."""
     import asyncio
     from langchain_openai import ChatOpenAI
@@ -63,7 +63,7 @@ def execute_general_workflow(self, workflow_id: str, empresa_id: str, task_descr
         llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.7)
         
         # Create and execute crew
-        crew = create_general_task_crew(llm, empresa_id, task_description)
+        crew = create_general_task_crew(llm, company_id, task_description)
         result = crew.kickoff()
 
         # Append flow diagram to the result
@@ -91,7 +91,7 @@ def execute_general_workflow(self, workflow_id: str, empresa_id: str, task_descr
 
 
 @celery_app.task(bind=True)
-def execute_financial_analysis(self, workflow_id: str, empresa_id: str, analysis_type: str):
+def execute_financial_analysis(self, workflow_id: str, company_id: str, analysis_type: str):
     """Execute a financial analysis workflow asynchronously."""
     import asyncio
     from langchain_openai import ChatOpenAI
@@ -101,7 +101,7 @@ def execute_financial_analysis(self, workflow_id: str, empresa_id: str, analysis
         asyncio.run(update_workflow_status(workflow_id, "running"))
         
         llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3)
-        crew = create_financial_analysis_crew(llm, empresa_id, analysis_type)
+        crew = create_financial_analysis_crew(llm, company_id, analysis_type)
         result = crew.kickoff()
         
         asyncio.run(update_workflow_status(
@@ -119,7 +119,7 @@ def execute_financial_analysis(self, workflow_id: str, empresa_id: str, analysis
 
 
 @celery_app.task(bind=True)
-def execute_document_review(self, workflow_id: str, empresa_id: str, query: str, review_type: str = "general"):
+def execute_document_review(self, workflow_id: str, company_id: str, query: str, review_type: str = "general"):
     """Execute a document review workflow asynchronously."""
     import asyncio
     from langchain_openai import ChatOpenAI
@@ -129,7 +129,7 @@ def execute_document_review(self, workflow_id: str, empresa_id: str, query: str,
         asyncio.run(update_workflow_status(workflow_id, "running"))
         
         llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3)
-        crew = create_document_review_crew(llm, empresa_id, query, review_type)
+        crew = create_document_review_crew(llm, company_id, query, review_type)
         result = crew.kickoff()
         
         asyncio.run(update_workflow_status(

@@ -1,0 +1,28 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Copy project files and shared dependencies
+COPY pyproject.toml README.md ./
+COPY shared/ ./shared/
+
+# Install dependencies using uv (system-wide, no venv needed in Docker)
+# Use unsafe-best-match to consider all versions from all indexes (PyTorch + PyPI)
+RUN uv pip install --system --index-strategy unsafe-best-match -e .
+
+# Copy application code
+COPY . .
+
+# The service to run will be determined by the SERVICE_NAME and SERVICE_PORT environment variables
+CMD python -m services.${SERVICE_NAME}.main

@@ -6,19 +6,32 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN pip install poetry
+# Create non-root user for Celery
+RUN useradd -m -u 1000 -s /bin/bash celeryuser && \
+    chown -R celeryuser:celeryuser /app
 
-# Copy poetry files
-COPY pyproject.toml poetry.lock* ./
+# Install uv as root first
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
 
-# Install dependencies
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+# Copy project files and shared dependencies
+COPY pyproject.toml README.md ./
+COPY shared/ ./shared/
+
+# Install dependencies using uv (system-wide, no venv needed in Docker)
+# Use unsafe-best-match to consider all versions from all indexes (PyTorch + PyPI)
+RUN uv pip install --system --index-strategy unsafe-best-match -e .
 
 # Copy application code
 COPY . .
+
+# Change ownership of all app files to celeryuser
+RUN chown -R celeryuser:celeryuser /app
+
+# Switch to non-root user
+USER celeryuser
 
 # The command will be provided by docker-compose

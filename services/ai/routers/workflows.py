@@ -23,7 +23,7 @@ router = APIRouter()
 @router.post("/trigger", response_model=WorkflowResponse)
 async def trigger_workflow(
     workflow_type: str,
-    empresa_id: UUID,
+    company_id: UUID,
     input_data: dict,
     priority: str = "normal",
     db: AsyncSession = Depends(get_db),
@@ -39,7 +39,7 @@ async def trigger_workflow(
     # Create workflow record
     workflow = Workflow(
         id=uuid4(),
-        empresa_id=empresa_id,
+        company_id=company_id,
         workflow_type=workflow_type,
         status="pending",
         input_data=input_data,
@@ -55,19 +55,19 @@ async def trigger_workflow(
         if workflow_type == "general":
             task = execute_general_workflow.delay(
                 workflow_id=str(workflow.id),
-                empresa_id=str(empresa_id),
+                company_id=str(company_id),
                 task_description=input_data.get("task_description", "")
             )
         elif workflow_type == "financial_analysis":
             task = execute_financial_analysis.delay(
                 workflow_id=str(workflow.id),
-                empresa_id=str(empresa_id),
+                company_id=str(company_id),
                 analysis_type=input_data.get("analysis_type", "general")
             )
         elif workflow_type == "document_review":
             task = execute_document_review.delay(
                 workflow_id=str(workflow.id),
-                empresa_id=str(empresa_id),
+                company_id=str(company_id),
                 query=input_data.get("query", ""),
                 review_type=input_data.get("review_type", "general")
             )
@@ -107,7 +107,7 @@ async def get_workflow(
 
 @router.get("/", response_model=List[WorkflowResponse])
 async def list_workflows(
-    empresa_id: UUID,
+    company_id: UUID,
     status: Optional[str] = None,
     workflow_type: Optional[str] = None,
     skip: int = Query(0, ge=0),
@@ -115,7 +115,7 @@ async def list_workflows(
     db: AsyncSession = Depends(get_db),
 ):
     """List workflows for a company."""
-    query = select(Workflow).where(Workflow.empresa_id == empresa_id)
+    query = select(Workflow).where(Workflow.company_id == company_id)
     
     if status:
         query = query.where(Workflow.status == status)

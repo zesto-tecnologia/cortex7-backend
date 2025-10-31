@@ -1,0 +1,506 @@
+# Security Rules for Python Microservices
+
+## Authentication & Authorization
+
+### JWT Implementation
+```python
+# src/core/security.py
+from datetime import datetime, timedelta
+from typing import Optional
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+SECRET_KEY = settings.JWT_SECRET
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password against hash."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    """Hash password using bcrypt."""
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Create JWT access token."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "type": "access"
+    })
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """Validate token and get current user."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = await get_user(user_id)
+    if user is None:
+        raise credentials_exception
+    return user
+```
+
+### Role-Based Access Control (RBAC)
+```python
+# src/core/permissions.py
+from enum import Enum
+from typing import List
+from fastapi import HTTPException, status
+
+class Role(str, Enum):
+    ADMIN = "admin"
+    USER = "user"
+    SERVICE = "service"
+
+class Permission(str, Enum):
+    READ = "read"
+    WRITE = "write"
+    DELETE = "delete"
+    ADMIN = "admin"
+
+# Permission mapping
+ROLE_PERMISSIONS = {
+    Role.ADMIN: [Permission.READ, Permission.WRITE, Permission.DELETE, Permission.ADMIN],
+    Role.USER: [Permission.READ, Permission.WRITE],
+    Role.SERVICE: [Permission.READ, Permission.WRITE],
+}
+
+def check_permission(user_role: Role, required_permission: Permission) -> bool:
+    """Check if role has required permission."""
+    return required_permission in ROLE_PERMISSIONS.get(user_role, [])
+
+def require_permission(permission: Permission):
+    """Dependency to require specific permission."""
+    async def permission_checker(current_user = Depends(get_current_user)):
+        if not check_permission(current_user.role, permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions"
+            )
+        return current_user
+    return permission_checker
+```
+
+### Service-to-Service Authentication
+```python
+# src/core/service_auth.py
+import hmac
+import hashlib
+from datetime import datetime, timedelta
+
+SERVICE_SECRET = settings.SERVICE_SECRET
+
+def generate_service_token(service_name: str) -> str:
+    """Generate token for service-to-service auth."""
+    timestamp = datetime.utcnow().isoformat()
+    message = f"{service_name}:{timestamp}"
+    signature = hmac.new(
+        SERVICE_SECRET.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return f"{message}:{signature}"
+
+def verify_service_token(token: str, max_age_seconds: int = 60) -> bool:
+    """Verify service token."""
+    try:
+        message, signature = token.rsplit(":", 1)
+        service_name, timestamp = message.rsplit(":", 1)
+
+        # Check signature
+        expected_signature = hmac.new(
+            SERVICE_SECRET.encode(),
+            message.encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+        if not hmac.compare_digest(signature, expected_signature):
+            return False
+
+        # Check timestamp
+        token_time = datetime.fromisoformat(timestamp)
+        if datetime.utcnow() - token_time > timedelta(seconds=max_age_seconds):
+            return False
+
+        return True
+    except Exception:
+        return False
+```
+
+## Input Validation
+
+### Pydantic Validators
+```python
+# src/schemas/validators.py
+from pydantic import BaseModel, Field, validator, EmailStr
+import re
+from typing import Optional
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    name: str = Field(..., min_length=1, max_length=100)
+
+    @validator('password')
+    def validate_password(cls, v):
+        """Enforce password complexity."""
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain lowercase letter')
+        if not re.search(r'\d', v):
+            raise ValueError('Password must contain digit')
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError('Password must contain special character')
+        return v
+
+    @validator('name')
+    def validate_name(cls, v):
+        """Prevent injection attempts in name."""
+        if re.search(r'[<>\"\'%;()&+]', v):
+            raise ValueError('Name contains invalid characters')
+        return v.strip()
+
+class SQLQuery(BaseModel):
+    """Validate SQL query parameters."""
+    table: str = Field(..., regex=r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+    column: str = Field(..., regex=r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+    limit: int = Field(default=100, ge=1, le=1000)
+    offset: int = Field(default=0, ge=0)
+```
+
+### Request Size Limiting
+```python
+# src/middleware/security.py
+from fastapi import Request, HTTPException, status
+
+async def validate_content_length(request: Request, max_size: int = 1_000_000):
+    """Limit request body size."""
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Request body too large. Max size: {max_size} bytes"
+        )
+```
+
+## SQL Injection Prevention
+
+### Safe Database Queries
+```python
+# src/repositories/safe_repository.py
+from sqlalchemy import text, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+class SafeRepository:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def safe_query(self, user_id: str, status: str):
+        """Use parameterized queries to prevent SQL injection."""
+        # ✅ SAFE - Using parameterized query
+        stmt = select(User).where(
+            User.id == user_id,
+            User.status == status
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().all()
+
+    async def safe_raw_query(self, email: str):
+        """Safe raw SQL with parameters."""
+        # ✅ SAFE - Using bound parameters
+        query = text("SELECT * FROM users WHERE email = :email")
+        result = await self.db.execute(query, {"email": email})
+        return result.fetchall()
+
+    # ❌ NEVER DO THIS
+    async def unsafe_query(self, email: str):
+        """NEVER use string concatenation for SQL."""
+        # VULNERABLE TO SQL INJECTION
+        query = f"SELECT * FROM users WHERE email = '{email}'"
+        # DON'T DO THIS
+```
+
+## Rate Limiting
+
+### Implementation with slowapi
+```python
+# src/middleware/rate_limit.py
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request
+
+# Create limiter
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["100/minute"],
+    storage_uri="redis://localhost:6379"
+)
+
+# Rate limit decorator
+@limiter.limit("10/minute")
+async def sensitive_endpoint(request: Request):
+    """Rate limited endpoint."""
+    pass
+
+# Custom rate limit by user
+def get_user_id(request: Request):
+    """Get user ID from token."""
+    token = request.headers.get("Authorization")
+    if token:
+        user = decode_token(token)
+        return user.get("sub", get_remote_address(request))
+    return get_remote_address(request)
+
+@limiter.limit("50/hour", key_func=get_user_id)
+async def user_endpoint(request: Request):
+    """User-specific rate limiting."""
+    pass
+```
+
+## Secrets Management
+
+### Environment Variables
+```python
+# src/core/config.py
+from pydantic import BaseSettings, SecretStr
+from typing import Optional
+
+class Settings(BaseSettings):
+    # Secrets
+    database_url: SecretStr
+    redis_url: SecretStr
+    jwt_secret: SecretStr
+    service_secret: SecretStr
+
+    # Encryption keys
+    encryption_key: SecretStr
+    api_keys: list[SecretStr] = []
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = False
+
+    def get_secret_value(self, key: str) -> str:
+        """Safely get secret value."""
+        secret = getattr(self, key, None)
+        if isinstance(secret, SecretStr):
+            return secret.get_secret_value()
+        return None
+
+settings = Settings()
+```
+
+### Encryption at Rest
+```python
+# src/core/encryption.py
+from cryptography.fernet import Fernet
+from typing import Union
+
+class Encryptor:
+    def __init__(self, key: bytes = None):
+        self.key = key or Fernet.generate_key()
+        self.cipher = Fernet(self.key)
+
+    def encrypt(self, data: Union[str, bytes]) -> bytes:
+        """Encrypt sensitive data."""
+        if isinstance(data, str):
+            data = data.encode()
+        return self.cipher.encrypt(data)
+
+    def decrypt(self, encrypted_data: bytes) -> str:
+        """Decrypt sensitive data."""
+        return self.cipher.decrypt(encrypted_data).decode()
+
+# Usage for PII encryption
+encryptor = Encryptor(settings.encryption_key.get_secret_value().encode())
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID, primary_key=True)
+    email = Column(String, unique=True, index=True)
+    # Encrypt PII
+    ssn_encrypted = Column(LargeBinary)
+
+    @property
+    def ssn(self) -> Optional[str]:
+        if self.ssn_encrypted:
+            return encryptor.decrypt(self.ssn_encrypted)
+        return None
+
+    @ssn.setter
+    def ssn(self, value: str):
+        if value:
+            self.ssn_encrypted = encryptor.encrypt(value)
+```
+
+## CORS Configuration
+
+```python
+# src/core/cors.py
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+def configure_cors(app: FastAPI):
+    """Configure CORS for the application."""
+    origins = [
+        "https://example.com",
+        "https://app.example.com",
+    ]
+
+    # Only allow specific origins in production
+    if settings.ENVIRONMENT == "development":
+        origins.append("http://localhost:3000")
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+        max_age=86400,  # Cache preflight for 24 hours
+    )
+```
+
+## Security Headers
+
+```python
+# src/middleware/security_headers.py
+from fastapi import Request
+from fastapi.responses import Response
+
+async def add_security_headers(request: Request, call_next):
+    """Add security headers to all responses."""
+    response = await call_next(request)
+
+    # Security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+
+    return response
+```
+
+## Audit Logging
+
+```python
+# src/core/audit.py
+import json
+from datetime import datetime
+from typing import Any, Dict
+
+class AuditLogger:
+    async def log_event(
+        self,
+        event_type: str,
+        user_id: str,
+        resource: str,
+        action: str,
+        details: Dict[str, Any] = None
+    ):
+        """Log security-relevant events."""
+        audit_entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "event_type": event_type,
+            "user_id": user_id,
+            "resource": resource,
+            "action": action,
+            "details": details or {},
+            "ip_address": get_client_ip(),
+            "user_agent": get_user_agent(),
+        }
+
+        # Log to secure audit trail (e.g., separate database, SIEM)
+        await self.save_audit_log(audit_entry)
+
+        # Alert on suspicious activity
+        if event_type in ["UNAUTHORIZED_ACCESS", "MULTIPLE_FAILED_LOGINS"]:
+            await self.send_security_alert(audit_entry)
+
+audit_logger = AuditLogger()
+
+# Usage in endpoints
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    current_user = Depends(get_current_user)
+):
+    # Log the deletion attempt
+    await audit_logger.log_event(
+        event_type="USER_DELETION",
+        user_id=current_user.id,
+        resource=f"user:{user_id}",
+        action="DELETE",
+        details={"target_user": user_id}
+    )
+
+    # Perform deletion
+    await user_service.delete(user_id)
+```
+
+## Security Testing
+
+```python
+# tests/security/test_injection.py
+import pytest
+from httpx import AsyncClient
+
+@pytest.mark.asyncio
+async def test_sql_injection_prevention(client: AsyncClient):
+    """Test SQL injection prevention."""
+    # Attempt SQL injection
+    malicious_input = "'; DROP TABLE users; --"
+
+    response = await client.get(f"/api/v1/users?email={malicious_input}")
+
+    # Should handle safely
+    assert response.status_code in [200, 404]
+    # Verify table still exists
+    users = await db.execute("SELECT COUNT(*) FROM users")
+    assert users is not None
+
+@pytest.mark.asyncio
+async def test_xss_prevention(client: AsyncClient):
+    """Test XSS prevention."""
+    # Attempt XSS
+    malicious_input = "<script>alert('XSS')</script>"
+
+    response = await client.post("/api/v1/users", json={
+        "name": malicious_input,
+        "email": "test@example.com"
+    })
+
+    # Should be rejected or sanitized
+    assert "<script>" not in response.text
+```
