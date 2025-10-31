@@ -45,10 +45,31 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     JWT_ISSUER: str = "auth-service"
     JWT_AUDIENCE: str = "cortex-7"
-    JWT_PRIVATE_KEY_PATH: str = "keys/jwt_private_key.pem"
-    JWT_PUBLIC_KEY_PATH: str = "keys/jwt_public_key.pem"
+    AUTH_PRIVATE_KEY_PATH: str = "keys/private.pem"
+    AUTH_PUBLIC_KEY_PATH: str = "keys/public.pem"
+    JWT_PRIVATE_KEY_PATH: str = "keys/private.pem"  # Alias for compatibility
+    JWT_PUBLIC_KEY_PATH: str = "keys/public.pem"    # Alias for compatibility
     JWT_KEY_PASSWORD: str | None = None  # Optional password for encrypted keys
     JWT_KEY_ROTATION_DAYS: int = 90
+
+    # Token Lifetimes (role-based)
+    TOKEN_ACCESS_LIFETIME_ADMIN: int = 1800  # 30 minutes for admin/manager
+    TOKEN_ACCESS_LIFETIME_USER: int = 3600  # 60 minutes for regular users
+    TOKEN_REFRESH_LIFETIME: int = 2592000  # 30 days
+
+    @property
+    def auth_private_key(self) -> str:
+        """Get private key from secrets manager or file."""
+        from .core.secrets import get_secrets_manager
+        secrets = get_secrets_manager(self.ENVIRONMENT)
+        return secrets.get_private_key()
+
+    @property
+    def auth_public_key(self) -> str:
+        """Get public key from secrets manager or file."""
+        from .core.secrets import get_secrets_manager
+        secrets = get_secrets_manager(self.ENVIRONMENT)
+        return secrets.get_public_key()
 
     # Company Service - REQUIRED: Must be set in .env
     COMPANY_SERVICE_URL: HttpUrl

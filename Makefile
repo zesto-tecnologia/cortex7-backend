@@ -36,8 +36,17 @@ help: ## Show this help message
 	@echo '${YELLOW}🧹 Maintenance:${NC}'
 	@grep -E '^(clean|clean-all|prune|install).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
 	@echo ''
+	@echo '${YELLOW}🚀 Service Management:${NC}'
+	@grep -E '^(up-|stop-).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
+	@echo ''
+	@echo '${YELLOW}🐛 Debugging:${NC}'
+	@grep -E '^(debug-|attach).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
+	@echo ''
 	@echo '${YELLOW}⚡ Quick Actions:${NC}'
 	@grep -E '^(status|health|monitor).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
+	@echo ''
+	@echo '${YELLOW}👤 Auth & Admin:${NC}'
+	@grep -E '^(create-super-admin).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-20s${NC} %s\n", $$1, $$2}'
 	@echo ''
 
 # =============================================================================
@@ -200,6 +209,148 @@ health: ## Check service health
 monitor: ## Monitor services (logs + status)
 	@echo "$(BLUE)Starting service monitor...$(NC)"
 	@./scripts/monitor_services.sh 2>/dev/null || echo "$(YELLOW)Monitor script not found$(NC)"
+
+# =============================================================================
+# 🚀 Service Management (Start/Stop specific services)
+# =============================================================================
+
+# Core dependencies needed by most services
+CORE_SERVICES := postgres redis
+
+up-auth: ## Start auth service with dependencies (postgres, redis, gateway, auth)
+	@echo "$(BLUE)Starting Auth Service with dependencies...$(NC)"
+	@$(COMPOSE) up -d $(CORE_SERVICES) gateway auth-service
+	@echo "$(GREEN)✅ Auth service started$(NC)"
+	@echo "$(YELLOW)Auth: http://localhost:8001$(NC)"
+
+up-financial: ## Start financial service with dependencies
+	@echo "$(BLUE)Starting Financial Service with dependencies...$(NC)"
+	@$(COMPOSE) up -d $(CORE_SERVICES) gateway financial-service
+	@echo "$(GREEN)✅ Financial service started$(NC)"
+	@echo "$(YELLOW)Financial: http://localhost:8002$(NC)"
+
+up-hr: ## Start HR service with dependencies
+	@echo "$(BLUE)Starting HR Service with dependencies...$(NC)"
+	@$(COMPOSE) up -d $(CORE_SERVICES) gateway hr-service
+	@echo "$(GREEN)✅ HR service started$(NC)"
+	@echo "$(YELLOW)HR: http://localhost:8003$(NC)"
+
+up-legal: ## Start legal service with dependencies
+	@echo "$(BLUE)Starting Legal Service with dependencies...$(NC)"
+	@$(COMPOSE) up -d $(CORE_SERVICES) gateway legal-service
+	@echo "$(GREEN)✅ Legal service started$(NC)"
+	@echo "$(YELLOW)Legal: http://localhost:8004$(NC)"
+
+up-procurement: ## Start procurement service with dependencies
+	@echo "$(BLUE)Starting Procurement Service with dependencies...$(NC)"
+	@$(COMPOSE) up -d $(CORE_SERVICES) gateway procurement-service
+	@echo "$(GREEN)✅ Procurement service started$(NC)"
+	@echo "$(YELLOW)Procurement: http://localhost:8005$(NC)"
+
+up-documents: ## Start documents service with dependencies
+	@echo "$(BLUE)Starting Documents Service with dependencies...$(NC)"
+	@$(COMPOSE) up -d $(CORE_SERVICES) gateway documents-service
+	@echo "$(GREEN)✅ Documents service started$(NC)"
+	@echo "$(YELLOW)Documents: http://localhost:8006$(NC)"
+
+up-ai: ## Start AI service with dependencies
+	@echo "$(BLUE)Starting AI Service with dependencies...$(NC)"
+	@$(COMPOSE) up -d $(CORE_SERVICES) gateway ai-service
+	@echo "$(GREEN)✅ AI service started$(NC)"
+	@echo "$(YELLOW)AI: http://localhost:8007$(NC)"
+
+stop-auth: ## Stop auth service only
+	@echo "$(YELLOW)Stopping Auth Service...$(NC)"
+	@$(COMPOSE) stop auth-service
+	@echo "$(GREEN)✅ Auth service stopped$(NC)"
+
+stop-financial: ## Stop financial service only
+	@echo "$(YELLOW)Stopping Financial Service...$(NC)"
+	@$(COMPOSE) stop financial-service
+	@echo "$(GREEN)✅ Financial service stopped$(NC)"
+
+stop-hr: ## Stop HR service only
+	@echo "$(YELLOW)Stopping HR Service...$(NC)"
+	@$(COMPOSE) stop hr-service
+	@echo "$(GREEN)✅ HR service stopped$(NC)"
+
+stop-legal: ## Stop legal service only
+	@echo "$(YELLOW)Stopping Legal Service...$(NC)"
+	@$(COMPOSE) stop legal-service
+	@echo "$(GREEN)✅ Legal service stopped$(NC)"
+
+stop-procurement: ## Stop procurement service only
+	@echo "$(YELLOW)Stopping Procurement Service...$(NC)"
+	@$(COMPOSE) stop procurement-service
+	@echo "$(GREEN)✅ Procurement service stopped$(NC)"
+
+stop-documents: ## Stop documents service only
+	@echo "$(YELLOW)Stopping Documents Service...$(NC)"
+	@$(COMPOSE) stop documents-service
+	@echo "$(GREEN)✅ Documents service stopped$(NC)"
+
+stop-ai: ## Stop AI service only
+	@echo "$(YELLOW)Stopping AI Service...$(NC)"
+	@$(COMPOSE) stop ai-service
+	@echo "$(GREEN)✅ AI service stopped$(NC)"
+
+# =============================================================================
+# 🐛 Debugging Commands (Essential Only)
+# =============================================================================
+
+DEBUG_COMPOSE := docker-compose -f docker-compose.yml -f docker-compose.debug.yml
+
+debug-auth: ## Start auth in debug mode (Ctrl+C to stop, then F5 in VSCode)
+	@echo "$(BLUE)🐛 Starting Auth Service in DEBUG mode...$(NC)"
+	@$(COMPOSE) stop auth-service 2>/dev/null || true
+	@echo "$(YELLOW)Starting core dependencies...$(NC)"
+	@$(COMPOSE) up -d $(CORE_SERVICES) gateway
+	@echo "$(YELLOW)Starting auth in debug mode...$(NC)"
+	@$(DEBUG_COMPOSE) up auth-service
+	@echo "$(GREEN)✅ Debug stopped$(NC)"
+
+debug-stop: ## Stop debug service and restart normal auth
+	@echo "$(YELLOW)Stopping debug service...$(NC)"
+	@$(DEBUG_COMPOSE) stop auth-service
+	@$(DEBUG_COMPOSE) rm -f auth-service
+	@echo "$(YELLOW)Starting normal auth service...$(NC)"
+	@$(COMPOSE) up -d auth-service
+	@echo "$(GREEN)✅ Back to normal mode$(NC)"
+
+attach: ## Show VSCode debugger attachment instructions
+	@echo ""
+	@echo "$(BLUE)════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)   🐛 VSCode Debugger - Quick Attach$(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(GREEN)1.$(NC) Press $(YELLOW)Cmd+Shift+D$(NC) (or Ctrl+Shift+D)"
+	@echo "$(GREEN)2.$(NC) Select $(YELLOW)'Docker: Attach to Auth Service'$(NC)"
+	@echo "$(GREEN)3.$(NC) Press $(YELLOW)F5$(NC)"
+	@echo "$(GREEN)4.$(NC) Set breakpoints and test!"
+	@echo ""
+	@echo "$(BLUE)════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+
+# =============================================================================
+# 👤 Auth & Admin Management
+# =============================================================================
+
+create-super-admin: ## Create first super admin user (bootstrap)
+	@echo "$(BLUE)════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)   👤 Super Admin Bootstrap$(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(YELLOW)This will create the first super admin user.$(NC)"
+	@echo "$(YELLOW)You'll need this to generate invite codes.$(NC)"
+	@echo ""
+	@$(UV_RUN) python services/auth/scripts/create_super_admin.py
+	@echo ""
+	@echo "$(BLUE)════════════════════════════════════════════════════════$(NC)"
+	@echo "$(GREEN)Next steps:$(NC)"
+	@echo "  1. Login via Postman: POST /api/v1/auth/login"
+	@echo "  2. Generate invite: POST /api/v1/admin/invites"
+	@echo "  3. Register users with invite codes"
+	@echo "$(BLUE)════════════════════════════════════════════════════════$(NC)"
 
 # =============================================================================
 # Common Workflows

@@ -47,7 +47,7 @@ class AuditLogRepository:
             resource=resource,
             ip_address=ip_address,
             user_agent=user_agent,
-            metadata=metadata or {}
+            metadata_json=metadata or {}
         )
         self.session.add(log)
         await self.session.flush()

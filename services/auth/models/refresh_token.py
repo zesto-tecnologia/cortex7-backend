@@ -9,7 +9,7 @@ from services.auth.models.base import TimestampMixin
 
 
 class RefreshToken(Base, TimestampMixin):
-    """Refresh token model for JWT token management."""
+    """Refresh token model for JWT token management with rotation support."""
 
     __tablename__ = "refresh_tokens"
 
@@ -21,15 +21,19 @@ class RefreshToken(Base, TimestampMixin):
     )
     token_hash: Mapped[str] = mapped_column(
         String(255),
+        nullable=False,
         unique=True,
-        index=True,
-        nullable=False
-    )
+        index=True
+    )  # Hashed token for secure storage
     token_family_id: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
         index=True
-    )
+    )  # Token family for rotation detection
+    device_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True
+    )  # Device identifier for tracking
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -37,24 +41,23 @@ class RefreshToken(Base, TimestampMixin):
     )
     revoked: Mapped[bool] = mapped_column(
         Boolean,
+        nullable=False,
         default=False,
-        nullable=False
-    )
-    device_id: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True
-    )
+        server_default="false"
+    )  # Revocation status for security
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="refresh_tokens")
 
+    @property
     def is_valid(self) -> bool:
         """Check if the refresh token is valid."""
-        return not self.revoked and self.expires_at > datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        return not self.revoked and self.expires_at > now
 
     def revoke(self) -> None:
         """Revoke the refresh token."""
         self.revoked = True
 
     def __repr__(self) -> str:
-        return f"<RefreshToken(id={self.id}, user_id={self.user_id}, expires_at={self.expires_at}, revoked={self.revoked})>"
+        return f"<RefreshToken(id={self.id}, user_id={self.user_id}, family_id={self.token_family_id})>"

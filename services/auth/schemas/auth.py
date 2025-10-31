@@ -9,6 +9,7 @@ from typing import Optional, Any
 class UserRegisterRequest(BaseModel):
     """User registration request schema."""
 
+    invite_code: str = Field(min_length=1, max_length=64, description="Invite code required for registration")
     email: EmailStr
     name: str = Field(min_length=1, max_length=255)
     password: str = Field(min_length=8)
@@ -17,12 +18,16 @@ class UserRegisterRequest(BaseModel):
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
         """Enforce password strength requirements."""
+        import string
+
         if not any(c.isupper() for c in v):
             raise ValueError('Password must contain at least one uppercase letter')
         if not any(c.islower() for c in v):
             raise ValueError('Password must contain at least one lowercase letter')
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain at least one digit')
+        if not any(c in string.punctuation for c in v):
+            raise ValueError('Password must contain at least one special character')
         return v
 
 
@@ -94,12 +99,16 @@ class PasswordChangeRequest(BaseModel):
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
         """Enforce password strength requirements."""
+        import string
+
         if not any(c.isupper() for c in v):
             raise ValueError('Password must contain uppercase letter')
         if not any(c.islower() for c in v):
             raise ValueError('Password must contain lowercase letter')
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain digit')
+        if not any(c in string.punctuation for c in v):
+            raise ValueError('Password must contain special character')
         return v
 
 
@@ -119,12 +128,16 @@ class ResetPasswordRequest(BaseModel):
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
         """Enforce password strength requirements."""
+        import string
+
         if not any(c.isupper() for c in v):
             raise ValueError('Password must contain uppercase letter')
         if not any(c.islower() for c in v):
             raise ValueError('Password must contain lowercase letter')
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain digit')
+        if not any(c in string.punctuation for c in v):
+            raise ValueError('Password must contain special character')
         return v
 
 
@@ -195,12 +208,16 @@ class PasswordResetConfirm(BaseModel):
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
         """Enforce password strength requirements."""
+        import string
+
         if not any(c.isupper() for c in v):
             raise ValueError('Password must contain uppercase letter')
         if not any(c.islower() for c in v):
             raise ValueError('Password must contain lowercase letter')
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain digit')
+        if not any(c in string.punctuation for c in v):
+            raise ValueError('Password must contain special character')
         return v
 
 

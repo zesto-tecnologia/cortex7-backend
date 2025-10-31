@@ -1,10 +1,11 @@
 """User management endpoints."""
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, HTTPException
 from services.auth.schemas.auth import UserProfile, UserProfileUpdate, PasswordChangeRequest
-from services.auth.schemas.user import UserWithCompanies
+from services.auth.schemas.user import UserWithCompanies, UserUpdate
 from services.auth.dependencies import DatabaseDependency, CurrentUserDependency
 from services.auth.core.logging import get_logger
+from services.auth.repositories.user_repository import UserRepository
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -20,16 +21,17 @@ async def get_current_user(
 
     Returns the authenticated user's profile information.
     """
-    # TODO: Implement get current user
-    return UserProfile(
-        id="550e8400-e29b-41d4-a716-446655440000",
-        email="user@example.com",
-        name="Test User",
-        role="user",
-        email_verified=True,
-        created_at="2024-01-01T00:00:00Z",
-        updated_at="2024-01-01T00:00:00Z"
-    )
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(current_user_id)
+
+    if not user:
+        logger.warning(f"User not found: {current_user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    return UserProfile.model_validate(user)
 
 
 @router.patch("/me", response_model=UserProfile)
@@ -43,16 +45,26 @@ async def update_current_user(
 
     Allows users to update their name and email.
     """
-    # TODO: Implement user profile update
-    return UserProfile(
-        id="550e8400-e29b-41d4-a716-446655440000",
-        email=request.email or "user@example.com",
-        name=request.name or "Test User",
-        role="user",
-        email_verified=True,
-        created_at="2024-01-01T00:00:00Z",
-        updated_at="2024-01-01T00:00:00Z"
+    user_repo = UserRepository(db)
+
+    # Convert UserProfileUpdate to UserUpdate
+    update_data = UserUpdate(
+        name=request.name,
+        email=request.email
     )
+
+    # Update the user
+    updated_user = await user_repo.update(current_user_id, update_data)
+
+    if not updated_user:
+        logger.warning(f"User not found for update: {current_user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    logger.info(f"User profile updated: {current_user_id}")
+    return UserProfile.model_validate(updated_user)
 
 
 @router.post("/me/change-password", status_code=status.HTTP_204_NO_CONTENT)

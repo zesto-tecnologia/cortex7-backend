@@ -14,7 +14,7 @@ from services.auth.config import settings
 from services.auth.database import engine
 from services.auth.schemas.auth import HealthResponse, ReadinessResponse
 from services.auth.core.logging import configure_logging, get_logger
-from services.auth.api.v1 import auth, users
+from services.auth.api.v1 import auth, users, admin
 from services.auth.core.cache import redis_client
 
 # Configure logging
@@ -158,6 +158,12 @@ app.include_router(
     users.router,
     prefix="/api/v1/users",
     tags=["users"]
+)
+
+app.include_router(
+    admin.router,
+    prefix="/api/v1/admin",
+    tags=["admin"]
 )
 
 

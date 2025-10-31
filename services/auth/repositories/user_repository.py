@@ -289,6 +289,29 @@ class UserRepository:
         count = result.scalar() or 0
         return count > 0
 
+    async def list_all(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        include_deleted: bool = False
+    ) -> list[User]:
+        """List all users with pagination.
+
+        Args:
+            limit: Maximum number of results
+            offset: Offset for pagination
+            include_deleted: Include soft-deleted users
+
+        Returns:
+            List of user instances
+        """
+        stmt = select(User).order_by(User.created_at.desc()).limit(limit).offset(offset)
+
+        if not include_deleted:
+            stmt = stmt.where(User.deleted_at.is_(None))
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def hard_delete(self, user_id: UUID) -> None:
         """Permanently delete user from database (hard delete).

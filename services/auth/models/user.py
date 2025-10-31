@@ -17,6 +17,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(
         SQLEnum('user', 'admin', 'super_admin', name='user_role'),
         default='user',
@@ -41,6 +42,23 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     audit_logs: Mapped[list["AuditLog"]] = relationship(
         "AuditLog",
         back_populates="user"
+    )
+    user_roles: Mapped[list["UserRole"]] = relationship(
+        "UserRole",
+        foreign_keys="[UserRole.user_id]",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    created_invites: Mapped[list["InviteCode"]] = relationship(
+        "InviteCode",
+        foreign_keys="[InviteCode.creator_id]",
+        back_populates="creator"
+    )
+    used_invite: Mapped["InviteCode"] = relationship(
+        "InviteCode",
+        foreign_keys="[InviteCode.used_by_id]",
+        back_populates="used_by",
+        uselist=False
     )
 
     def is_active(self) -> bool:

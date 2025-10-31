@@ -1,4 +1,4 @@
-"""Authentication service with Supabase integration."""
+"""Authentication service with local password authentication."""
 
 from typing import Dict, Any, Optional
 from uuid import UUID
@@ -6,10 +6,11 @@ from datetime import datetime, timezone
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from services.auth.services.supabase_client import SupabaseClient
 from services.auth.repositories.user_repository import UserRepository
+from services.auth.repositories.invite_repository import InviteCodeRepository
 from services.auth.schemas.auth import UserRegisterRequest, UserLoginRequest
 from services.auth.core.exceptions import AuthenticationError, ConflictError, UserNotFoundError
+from services.auth.core.password import hash_password, verify_password
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +29,15 @@ class AuthService:
         Args:
             session: Database session
         """
-        self.supabase = SupabaseClient()
         self.user_repo = UserRepository(session)
+        self.invite_repo = InviteCodeRepository(session)
         self.session = session
 
     async def register_user(self, user_data: UserRegisterRequest) -> Dict[str, Any]:
-        """Register a new user through Supabase and local DB.
+        """Register a new user with local password authentication and invite code validation.
 
         Args:
-            user_data: User registration data
+            user_data: User registration data (includes invite_code)
 
         Returns:
             Dict containing user_id, email, and message
@@ -44,113 +45,150 @@ class AuthService:
         Raises:
             UserExistsError: If user already exists
             AuthenticationError: If registration fails
+            ValueError: If invite code is invalid
         """
-        # Check if user exists locally
+        # Step 1: Validate invite code FIRST before any other operations
+        try:
+            invite = await self.invite_repo.get_by_code(user_data.invite_code)
+            if not invite:
+                raise ValueError("Invalid invite code")
+
+            if not invite.is_valid():
+                if invite.used_at:
+                    raise ValueError("This invite code has already been used")
+                elif invite.revoked_at:
+                    raise ValueError("This invite code has been revoked")
+                elif invite.expires_at < datetime.now(timezone.utc):
+                    raise ValueError("This invite code has expired")
+                else:
+                    raise ValueError("Invalid invite code")
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error(f"invite_validation_failed - code={user_data.invite_code[:8]}..., error={str(e)}")
+            raise ValueError("Failed to validate invite code")
+
+        # Step 2: Check if user exists locally
         existing_user = await self.user_repo.get_by_email(user_data.email)
         if existing_user:
             raise UserExistsError("User with this email already exists")
 
         local_user = None
         try:
-            # Create user in Supabase
-            supabase_user = await self.supabase.create_user(
-                email=user_data.email,
-                password=user_data.password,
-                metadata={
-                    "name": user_data.name
-                }
-            )
+            # Step 3: Hash password with bcrypt (cost factor 12)
+            password_hash = hash_password(user_data.password)
 
-            # Extract user ID from Supabase response
-            supabase_user_id = supabase_user.get("user", {}).get("id")
-            if not supabase_user_id:
-                raise AuthenticationError("Failed to create user in Supabase")
-
-            # Create user in local database
+            # Step 4: Create user in local database
             from services.auth.schemas.user import UserCreate
             user_create = UserCreate(
-                id=UUID(supabase_user_id),
                 email=user_data.email,
                 name=user_data.name,
+                password_hash=password_hash,
                 role="user",
-                email_verified=False
+                email_verified=True,  # Auto-verify for now (no email confirmation required)
+                auth_provider=None  # Local authentication
             )
 
             local_user = await self.user_repo.create(user_create)
 
-            # Note: Verification email is automatically sent by Supabase
-            # when create_user is called with email_confirm=False
+            # Step 5: Mark invite code as used
+            try:
+                await self.invite_repo.validate_and_mark_used(
+                    user_data.invite_code,
+                    local_user.id
+                )
+            except ValueError as e:
+                # If marking invite as used fails, rollback user creation
+                logger.error(f"invite_marking_failed - code={user_data.invite_code[:8]}..., error={str(e)}")
+                raise AuthenticationError("Failed to process invite code")
+
+            # Step 6: Set verified_at timestamp since email is auto-verified
+            await self.user_repo.update_fields(
+                local_user.id,
+                verified_at=datetime.now(timezone.utc)
+            )
+
+            # Step 7: Commit transaction
+            await self.session.commit()
+
+            logger.info(f"user_registered_with_invite - email={user_data.email}, user_id={local_user.id}")
 
             return {
                 "user_id": str(local_user.id),
                 "email": local_user.email,
-                "message": "Registration successful. Please check your email for verification."
+                "message": "Registration successful. You can now log in."
             }
 
-        except UserExistsError:
+        except (UserExistsError, ValueError):
+            await self.session.rollback()
             raise
         except Exception as e:
+            await self.session.rollback()
             logger.error(f"registration_failed - email={user_data.email}, error={str(e)}")
 
-            # Rollback local user if created
-            if local_user:
-                try:
-                    await self.user_repo.soft_delete(local_user.id)
-                    await self.session.commit()
-                except Exception as rollback_error:
-                    logger.error(f"rollback_failed - {str(rollback_error)}")
-
+            # Rollback is already handled by exception above
             raise AuthenticationError(f"Registration failed: {str(e)}")
 
     async def login(self, credentials: UserLoginRequest) -> Dict[str, Any]:
-        """Authenticate user through Supabase.
+        """Authenticate user with local password verification.
 
         Args:
             credentials: User login credentials
 
         Returns:
-            Dict containing tokens and user data
+            Dict containing user data (tokens generated by JWT service in endpoint)
 
         Raises:
             AuthenticationError: If authentication fails
         """
         try:
-            # Authenticate with Supabase
-            response = await self.supabase.sign_in_with_password(
-                email=credentials.email,
-                password=credentials.password
-            )
-
-            # Get session and user from response
-            session_data = response.get("session", {})
-            user_data = response.get("user", {})
-
-            if not session_data or not user_data:
-                raise AuthenticationError("Invalid credentials")
-
-            # Update local user last_login
+            # Get user from local database
             user = await self.user_repo.get_by_email(credentials.email)
-            if user:
-                await self.user_repo.update_fields(
-                    user.id,
-                    last_login=datetime.now(timezone.utc)
-                )
-                await self.session.commit()
 
+            if not user:
+                # Don't reveal if email exists
+                logger.warning(f"login_attempt_invalid_email - email={credentials.email}")
+                raise AuthenticationError("Invalid email or password")
+
+            # Check if user has local password (not OAuth)
+            if not user.password_hash:
+                logger.warning(f"login_attempt_no_local_password - email={credentials.email}")
+                raise AuthenticationError("This account uses external authentication")
+
+            # Verify password with bcrypt
+            if not verify_password(credentials.password, user.password_hash):
+                logger.warning(f"login_attempt_invalid_password - email={credentials.email}")
+                raise AuthenticationError("Invalid email or password")
+
+            # Check if user account is active
+            if user.is_deleted():
+                logger.warning(f"login_attempt_deleted_account - email={credentials.email}")
+                raise AuthenticationError("Account is disabled")
+
+            # Update last_login timestamp
+            await self.user_repo.update_fields(
+                user.id,
+                last_login=datetime.now(timezone.utc)
+            )
+            await self.session.commit()
+
+            logger.info(f"user_authenticated - email={credentials.email}, user_id={user.id}")
+
+            # Return user data for JWT generation
             return {
-                "access_token": session_data.get("access_token"),
-                "refresh_token": session_data.get("refresh_token"),
                 "user": {
-                    "id": user_data.get("id"),
-                    "email": user_data.get("email"),
-                    "role": user.role if user else "user",
-                    "name": user.name if user else user_data.get("user_metadata", {}).get("name", "")
+                    "id": str(user.id),
+                    "email": user.email,
+                    "role": user.role,
+                    "name": user.name
                 }
             }
 
+        except AuthenticationError:
+            raise
         except Exception as e:
-            logger.error(f"supabase_login_failed - email={credentials.email}, error={str(e)}")
-            raise AuthenticationError("Invalid email or password")
+            logger.error(f"login_failed - email={credentials.email}, error={str(e)}")
+            raise AuthenticationError("Login failed. Please try again.")
 
     async def logout(self, user_id: UUID) -> Dict[str, str]:
         """Logout user (placeholder for future token revocation).
@@ -226,10 +264,10 @@ class AuthService:
 
 
     async def delete_user(self, email: str) -> Dict[str, Any]:
-        """Delete user from both Supabase and local database.
+        """Delete user from local database.
 
-        This method ensures atomic deletion from both authentication
-        and application databases to maintain consistency.
+        This performs a hard delete (for testing purposes). In production,
+        soft delete is recommended.
 
         Args:
             email: User email address
@@ -241,20 +279,17 @@ class AuthService:
             UserNotFoundError: If user doesn't exist
             AuthenticationError: If deletion fails
         """
-        # Get user from local database first
+        # Get user from local database
         user = await self.user_repo.get_by_email(email)
         if not user:
             raise UserNotFoundError(f"User with email {email} not found")
 
-        user_id = str(user.id)
-
         try:
-            # Delete from Supabase first (authentication layer)
-            await self.supabase.delete_user(user_id)
-
-            # Then delete from local database (hard delete for testing purposes)
+            # Hard delete from local database (for testing purposes)
             await self.user_repo.hard_delete(user.id)
             await self.session.commit()
+
+            logger.info(f"user_deleted - email={email}, user_id={user.id}")
 
             return {
                 "success": True,
@@ -263,7 +298,7 @@ class AuthService:
             }
 
         except Exception as e:
-            # Rollback local changes if any
+            # Rollback changes
             await self.session.rollback()
             logger.error(f"user_deletion_failed - email={email}, error={str(e)}")
             raise AuthenticationError(f"Failed to delete user: {str(e)}")

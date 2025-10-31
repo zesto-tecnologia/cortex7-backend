@@ -17,6 +17,7 @@ class UserCreate(UserBase):
     """User creation schema."""
 
     id: Optional[UUID] = None
+    password_hash: Optional[str] = None  # For local auth; None for OAuth
     role: str = "user"
     email_verified: bool = False
     auth_provider: Optional[str] = None

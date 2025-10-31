@@ -6,6 +6,8 @@ from services.auth.models.refresh_token import RefreshToken
 from services.auth.models.audit_log import AuditLog
 from services.auth.models.jwt_key import JWTKey
 from services.auth.models.user_company import UserCompany
+from services.auth.models.role import Role, Permission, UserRole, role_permissions
+from services.auth.models.invite import InviteCode
 
 __all__ = [
     "TimestampMixin",
@@ -15,4 +17,9 @@ __all__ = [
     "AuditLog",
     "JWTKey",
     "UserCompany",
+    "Role",
+    "Permission",
+    "UserRole",
+    "role_permissions",
+    "InviteCode",
 ]
