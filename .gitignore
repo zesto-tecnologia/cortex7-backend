@@ -237,7 +237,8 @@ services/cortex7-api-auth/
 # !migrations/versions/__init__.py
 
 # Documentation directories (project specific)
-# docs/
+docs/
+tasks/
 k8s/
 
 

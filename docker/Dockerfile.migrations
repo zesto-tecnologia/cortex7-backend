@@ -1,0 +1,31 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Copy project files and shared dependencies
+COPY pyproject.toml README.md ./
+COPY shared/ ./shared/
+
+# Install dependencies using uv (system-wide, no venv needed in Docker)
+RUN uv pip install --system --index-strategy unsafe-best-match -e .
+
+# Copy migration files and alembic config
+COPY alembic.ini ./
+COPY migrations/ ./migrations/
+
+# Copy the entire codebase (needed for alembic to import models)
+COPY . .
+
+# Run migrations
+CMD ["alembic", "upgrade", "head"]

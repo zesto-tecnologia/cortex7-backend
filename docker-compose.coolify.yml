@@ -1,0 +1,487 @@
+# ===================================================
+# Cortex7 Backend - Coolify Production Configuration
+# ===================================================
+# This is the production docker-compose file for Coolify deployment
+# Coolify treats this as the "single source of truth"
+# ===================================================
+
+version: "3.8"
+
+services:
+  # ============================================
+  # Infrastructure Services
+  # ============================================
+
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    container_name: cortex-postgres
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:?Database user is required}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Database password is required}
+      POSTGRES_DB: ${DATABASE_NAME:?Database name is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: cortex-redis
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Migration Service (runs once, then exits)
+  # ============================================
+
+  migrations:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.migrations
+    container_name: cortex-migrations
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cortex-network
+    labels:
+      - "coolify.exclude_from_hc=true"  # Exclude from health checks (one-time task)
+    restart: "no"  # Only run once
+
+  # ============================================
+  # API Gateway
+  # ============================================
+
+  gateway:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.gateway.prod
+    container_name: cortex-gateway
+    environment:
+      # Database
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Security
+      - SECRET_KEY=${SECRET_KEY:?Secret key is required}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      # Service URLs (internal network)
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - FINANCIAL_SERVICE_URL=http://financial-service:8002
+      - HR_SERVICE_URL=http://hr-service:8003
+      - LEGAL_SERVICE_URL=http://legal-service:8004
+      - PROCUREMENT_SERVICE_URL=http://procurement-service:8005
+      - DOCUMENTS_SERVICE_URL=http://documents-service:8006
+      - AI_SERVICE_URL=http://ai-service:8007
+      - PRESENTATION_SERVICE_URL=http://presentation-service:8008
+    labels:
+      # Coolify will generate the URL automatically
+      - "coolify.service_fqdn=${SERVICE_FQDN_GATEWAY}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Microservices
+  # ============================================
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service.prod
+    container_name: cortex-auth
+    environment:
+      - SERVICE_NAME=auth
+      - SERVICE_PORT=8001
+      # Database
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Security
+      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      # JWT
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-RS256}
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  financial-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service.prod
+    container_name: cortex-financial
+    environment:
+      - SERVICE_NAME=financial
+      - SERVICE_PORT=8002
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  hr-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service.prod
+    container_name: cortex-hr
+    environment:
+      - SERVICE_NAME=hr
+      - SERVICE_PORT=8003
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  legal-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service.prod
+    container_name: cortex-legal
+    environment:
+      - SERVICE_NAME=legal
+      - SERVICE_PORT=8004
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  procurement-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service.prod
+    container_name: cortex-procurement
+    environment:
+      - SERVICE_NAME=procurement
+      - SERVICE_PORT=8005
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  documents-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service.prod
+    container_name: cortex-documents
+    environment:
+      - SERVICE_NAME=documents
+      - SERVICE_PORT=8006
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY:?OpenAI API key is required}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.service.prod
+    container_name: cortex-ai
+    environment:
+      - SERVICE_NAME=ai
+      - SERVICE_PORT=8007
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  presentation-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.presentation
+    container_name: cortex-presentation
+    environment:
+      - SERVICE_NAME=presentation
+      - SERVICE_PORT=8008
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - IMAGE_PROVIDER=${IMAGE_PROVIDER:-dall-e-3}
+      - LLM=${LLM:-openai}
+      - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS:-false}
+      - USER_CONFIG_PATH=/tmp/presentation_user_config.json
+      - APP_DATA_DIRECTORY=/app_data
+      - TEMP_DIRECTORY=/tmp/presenton
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    volumes:
+      - presentation_data:/app_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Background Workers
+  # ============================================
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.celery
+    container_name: cortex-celery-worker
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    command: python -m celery -A shared.celery_app worker --loglevel=info
+    healthcheck:
+      test: ["CMD-SHELL", "python -m celery -A shared.celery_app inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.celery
+    container_name: cortex-celery-beat
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - cortex-network
+    command: python -m celery -A shared.celery_app beat --loglevel=info
+
+networks:
+  cortex-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  presentation_data:
